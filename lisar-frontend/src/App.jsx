@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import api, { setToken, getToken } from "./api";
+import { useState, useRef, useEffect } from "react";
 
 // ═══════════════════════════════════════════════════════════
 //  MOCK DATA
@@ -257,38 +256,11 @@ function LandingPage({ onLogin }) {
 //  LOGIN PAGE
 // ═══════════════════════════════════════════════════════════
 function LoginPage({ onLogin, goLanding }) {
-  const [tab,      setTab]      = useState("login");
-  const [email,    setEmail]    = useState("");
-  const [pass,     setPass]     = useState("");
-  const [name,     setName]     = useState("");
-  const [lib,      setLib]      = useState("");
-  const [libType,  setLibType]  = useState("academic");
-  const [loading,  setLoading]  = useState(false);
-  const [errMsg,   setErrMsg]   = useState("");
-
-  const handleLogin = async () => {
-    if (!email || !pass) { setErrMsg("Email and password are required"); return; }
-    setLoading(true); setErrMsg("");
-    try {
-      const data = await api.login(email.trim(), pass);
-      onLogin(data);
-    } catch (e) {
-      setErrMsg(e.message || "Invalid email or password");
-    } finally { setLoading(false); }
-  };
-
-  const handleRegister = async () => {
-    if (!name || !lib || !email || !pass) { setErrMsg("All fields are required"); return; }
-    setLoading(true); setErrMsg("");
-    try {
-      const data = await api.auth.register({ name, libraryName: lib, email: email.trim(), password: pass, libraryType: libType });
-      setToken(data.token);
-      onLogin(data);
-    } catch (e) {
-      setErrMsg(e.message || "Registration failed");
-    } finally { setLoading(false); }
-  };
-
+  const [tab, setTab] = useState("login");
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
+  const [name, setName] = useState("");
+  const [lib, setLib] = useState("");
   return (
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"Inter,system-ui,sans-serif"}}>
       <div style={{width:"min(420px,100%"}}>
@@ -311,10 +283,9 @@ function LoginPage({ onLogin, goLanding }) {
                 <div style={{background:`${C.primary}0D`,border:`1px solid ${C.primary}25`,borderRadius:8,padding:"10px 14px",marginBottom:18,fontSize:".78em",color:C.primary}}>
                   <strong>Demo credentials</strong><br/>Email: demo@lisar.app &nbsp;·&nbsp; Password: demo123
                 </div>
-                {errMsg && <div style={{background:"#FEE2E2",border:"1px solid #FECACA",borderRadius:7,padding:"8px 12px",marginBottom:12,fontSize:".8em",color:"#B91C1C"}}>{errMsg}</div>}
                 <Input label="Email" value={email} onChange={setEmail} placeholder="you@library.edu"/>
                 <Input label="Password" type="password" value={pass} onChange={setPass} placeholder="••••••••"/>
-                <Btn full onClick={handleLogin} size="lg" disabled={loading}>{loading ? "Signing in…" : "Sign In →"}</Btn>
+                <Btn full onClick={onLogin} size="lg">Sign In →</Btn>
                 <div style={{textAlign:"center",marginTop:14,fontSize:".78em",color:C.muted}}>
                   Don't have an account? <button onClick={()=>setTab("register")} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:600}}>Create one free</button>
                 </div>
@@ -325,9 +296,8 @@ function LoginPage({ onLogin, goLanding }) {
                 <Input label="Library Name" value={lib} onChange={setLib} placeholder="e.g. Unilag Main Library" required/>
                 <Input label="Email" value={email} onChange={setEmail} placeholder="library@institution.edu" required/>
                 <Input label="Password" type="password" value={pass} onChange={setPass} placeholder="Create a password" required/>
-                {errMsg && <div style={{background:"#FEE2E2",border:"1px solid #FECACA",borderRadius:7,padding:"8px 12px",marginBottom:12,fontSize:".8em",color:"#B91C1C"}}>{errMsg}</div>}
-                <Select label="Library Type" value={libType} onChange={setLibType} options={[{value:"academic",label:"Academic / University"},{value:"public",label:"Public Library"},{value:"school",label:"School Library"},{value:"special",label:"Special / Corporate"}]}/>
-                <Btn full onClick={handleRegister} size="lg" disabled={loading}>{loading ? "Creating account…" : "Create Free Account →"}</Btn>
+                <Select label="Library Type" value="academic" onChange={()=>{}} options={[{value:"academic",label:"Academic / University"},{value:"public",label:"Public Library"},{value:"school",label:"School Library"},{value:"special",label:"Special / Corporate"}]}/>
+                <Btn full onClick={onLogin} size="lg">Create Free Account →</Btn>
               </>
             )}
           </div>
@@ -494,37 +464,20 @@ function downloadFile(content, filename, type) {
 function DashboardPage({ setPage }) {
   const [liveStats, setLiveStats] = useState({...STATS});
   const [exportMsg, setExportMsg] = useState("");
-  const [apiBooks,  setApiBooks]  = useState(BOOKS);
-  const [apiPatrons,setApiPatrons]= useState(PATRONS);
 
-  // Fetch real stats from backend; fall back to mock if offline
+  // Simulate live ticking for today's activity
   useEffect(()=>{
-    api.reports.dashboard()
-      .then(d => {
-        if (!d) return;
-        setLiveStats(s=>({
-          ...s,
-          totalItems:       d.total_items      ?? s.totalItems,
-          totalBibs:        d.total_bibs        ?? s.totalBibs,
-          activePatrons:    d.active_patrons    ?? s.activePatrons,
-          todayCheckouts:   d.today_checkouts   ?? s.todayCheckouts,
-          todayReturns:     d.today_returns     ?? s.todayReturns,
-          overdueItems:     d.overdue_count     ?? s.overdueItems,
-          totalLoans:       d.active_loans      ?? s.totalLoans,
-          newItemsMonth:    d.new_items_month   ?? s.newItemsMonth,
-        }));
-      })
-      .catch(()=>{}); // offline → keep mock data
-    // Also preload catalogue + patrons for export functions
-    api.catalogue.list().then(d => { if (d?.bibs?.length) setApiBooks(d.bibs); }).catch(()=>{});
-    api.patrons.list().then(d => { if (d?.patrons?.length) setApiPatrons(d.patrons); }).catch(()=>{});
+    const t = setInterval(()=>{
+      setLiveStats(s=>({...s,todayCheckouts:s.todayCheckouts+(Math.random()>.92?1:0),todayReturns:s.todayReturns+(Math.random()>.95?1:0)}));
+    },8000);
+    return ()=>clearInterval(t);
   },[]);
 
   const doExport = (type) => {
-    if(type==="dc") { downloadFile(exportDublinCoreXML(apiBooks),"lisar-catalogue-dc.xml","application/xml"); setExportMsg("✅ Dublin Core XML exported"); }
-    else if(type==="marc") { downloadFile(exportMARCMnemonic(apiBooks),"lisar-catalogue.mrk","text/plain"); setExportMsg("✅ MARC 21 (.mrk) exported"); }
-    else if(type==="csv") { downloadFile(exportCSV(apiBooks),"lisar-catalogue.csv","text/csv"); setExportMsg("✅ Catalogue CSV exported"); }
-    else if(type==="patrons") { downloadFile(exportPatronsCSV(apiPatrons),"lisar-patrons.csv","text/csv"); setExportMsg("✅ Patron list CSV exported"); }
+    if(type==="dc") { downloadFile(exportDublinCoreXML(BOOKS),"lisar-catalogue-dc.xml","application/xml"); setExportMsg("✅ Dublin Core XML exported"); }
+    else if(type==="marc") { downloadFile(exportMARCMnemonic(BOOKS),"lisar-catalogue.mrk","text/plain"); setExportMsg("✅ MARC 21 (.mrk) exported"); }
+    else if(type==="csv") { downloadFile(exportCSV(BOOKS),"lisar-catalogue.csv","text/csv"); setExportMsg("✅ Catalogue CSV exported"); }
+    else if(type==="patrons") { downloadFile(exportPatronsCSV(PATRONS),"lisar-patrons.csv","text/csv"); setExportMsg("✅ Patron list CSV exported"); }
     setTimeout(()=>setExportMsg(""),3500);
   };
 
@@ -542,8 +495,8 @@ function DashboardPage({ setPage }) {
   return (
     <div style={{padding:"28px 24px",maxWidth:1200}}>
       <PageHeader
-        title={`Welcome back, ${activeUser.name.split(" ")[0]} 👋`}
-        subtitle={`${activeLibrary.name} · ${new Date().toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}`}
+        title={`Welcome back, ${DEMO.user.name.split(" ")[0]} 👋`}
+        subtitle={`${DEMO.library.name} · ${new Date().toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}`}
         action={<div style={{display:"flex",gap:8}}><Btn onClick={()=>setPage("circulation")} icon="🔄">Circulation Desk</Btn><Btn variant="secondary" onClick={()=>setPage("catalogue")} icon="📚">Add Item</Btn></div>}/>
 
       {/* Live Stats */}
@@ -981,15 +934,7 @@ function extractBibFromMARC(fields) {
 
 function CataloguingPage() {
   const [view, setView]         = useState("list");
-  const [inputMode, setInputMode] = useState("loc");
-  const [apiBooks, setApiBooks]   = useState(BOOKS);
-  const [booksLoading, setBooksLoading] = useState(false);
-
-  useEffect(()=>{
-    if (view !== "list") return;
-    setBooksLoading(true);
-    api.catalogue.list().then(d=>{ if(d?.bibs?.length) setApiBooks(d.bibs); }).catch(()=>{}).finally(()=>setBooksLoading(false));
-  },[view]); // loc | isbn | marc | manual
+  const [inputMode, setInputMode] = useState("loc"); // loc | isbn | marc | manual
   const [q, setQ]               = useState("");
   const [selected, setSelected] = useState(null);
   // LOC mode
@@ -1899,7 +1844,7 @@ function CirculationPage() {
   };
 
   // CHECKOUT
-  const processCheckout = async () => {
+  const processCheckout = () => {
     if (!itemBarcode.trim()) { flash("error","Please enter an item barcode."); return; }
     if (!patronBarcode.trim()) { flash("error","Please enter a patron ID."); return; }
     const patron = resolvedPatron || PATRONS[0];
@@ -1915,7 +1860,7 @@ function CirculationPage() {
   };
 
   // CHECKIN
-  const processCheckin = async () => {
+  const processCheckin = () => {
     if (!itemBarcode.trim()) { flash("error","Please enter an item barcode."); return; }
     const loan = loans.find(l=>l.barcode===itemBarcode&&(l.status==="active"||l.status==="overdue"));
     if (!loan) { flash("error",`❌ No active loan found for barcode "${itemBarcode}".`); return; }
@@ -3617,37 +3562,12 @@ function SettingsPage() {
 //  MAIN APP
 // ═══════════════════════════════════════════════════════════
 export default function LISARApp() {
-  const [screen,   setScreen]   = useState("landing");
-  const [page,     setPage]     = useState("dashboard");
-  const [collapsed,setCollapsed]= useState(false);
-  const [user,     setUser]     = useState(null);
-  const [library,  setLibrary]  = useState(null);
+  const [screen, setScreen] = useState("landing");
+  const [page, setPage] = useState("dashboard");
+  const [collapsed, setCollapsed] = useState(false);
 
-  // Session restore — if token exists, re-auth silently
-  useEffect(()=>{
-    if (!getToken()) return;
-    api.auth.me()
-      .then(d => {
-        setUser(d.user); setLibrary(d.library);
-        setScreen("app"); setPage("dashboard");
-      })
-      .catch(()=>{ setToken(""); }); // token expired
-  },[]);
-
-  const login = (data) => {
-    setUser(data.user); setLibrary(data.library);
-    setScreen("app"); setPage("dashboard");
-  };
-
-  const logout = () => {
-    api.logout();
-    setUser(null); setLibrary(null);
-    setScreen("landing");
-  };
-
-  // Derived display values — fall back to DEMO if API not connected yet
-  const activeUser    = user    || DEMO.user;
-  const activeLibrary = library || DEMO.library;
+  const login = () => { setScreen("app"); setPage("dashboard"); };
+  const logout = () => setScreen("landing");
 
   if (screen==="landing") return (
     <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>
@@ -3682,9 +3602,9 @@ export default function LISARApp() {
   return (
     <div style={{display:"flex",height:"100vh",background:C.bg,fontFamily:"Inter,system-ui,sans-serif",overflow:"hidden"}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0;} ::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:10px;} @keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      <Sidebar page={page} setPage={setPage} library={activeLibrary} collapsed={collapsed} setCollapsed={setCollapsed}/>
+      <Sidebar page={page} setPage={setPage} library={DEMO.library} collapsed={collapsed} setCollapsed={setCollapsed}/>
       <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
-        <Header page={page} user={activeUser} library={activeLibrary} setPage={setPage} onLogout={logout}/>
+        <Header page={page} user={DEMO.user} library={DEMO.library} setPage={setPage} onLogout={logout}/>
         <main style={{flex:1,overflowY:"auto"}}>{renderPage()}</main>
       </div>
     </div>
