@@ -63,4 +63,4 @@ router.get("/me", (req, res) => {
   } catch (e) { res.status(401).json({ error: "Invalid token" }); }
 });
 
-module.exports = router;cat > ~/lisar-lms/lisar-backend/routes/auth.js
+module.exports = router;
