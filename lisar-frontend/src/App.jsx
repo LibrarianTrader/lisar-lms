@@ -163,6 +163,132 @@ function Select({ label, value, onChange, options }) {
 // ═══════════════════════════════════════════════════════════
 //  LANDING PAGE
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+//  MOBILE BOTTOM NAV
+// ═══════════════════════════════════════════════════════════
+function MobileBottomNav({ page, setPage }) {
+  const tabs = [
+    { id:"dashboard", icon:"🏠", label:"Home" },
+    { id:"opac",      icon:"🔍", label:"Search" },
+    { id:"catalogue", icon:"📚", label:"Catalogue" },
+    { id:"circulation",icon:"🔄",label:"Desk" },
+    { id:"patrons",   icon:"👥", label:"Patrons" },
+  ];
+  return (
+    <div style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:200,height:58}}>
+      {tabs.map(t=>(
+        <button key={t.id} onClick={()=>setPage(t.id)}
+          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:"none",cursor:"pointer",color:page===t.id?C.primary:C.muted,borderTop:`2px solid ${page===t.id?C.primary:"transparent"}`}}>
+          <span style={{fontSize:18}}>{t.icon}</span>
+          <span style={{fontSize:".6em",fontWeight:page===t.id?700:400}}>{t.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MOBILE OPAC — Patron-facing simplified search
+// ═══════════════════════════════════════════════════════════
+function MobileOPACPage({ setPage }) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [searched, setSearched] = useState(false);
+
+  const search = async () => {
+    setSearched(true);
+    try {
+      const data = await api.catalogue.list({ q });
+      setResults(data?.bibs || BOOKS.filter(b=>
+        b.title.toLowerCase().includes(q.toLowerCase()) ||
+        (b.author||"").toLowerCase().includes(q.toLowerCase()) ||
+        (b.subject||"").toLowerCase().includes(q.toLowerCase())
+      ));
+    } catch {
+      setResults(BOOKS.filter(b=>
+        b.title.toLowerCase().includes(q.toLowerCase()) ||
+        (b.author||"").toLowerCase().includes(q.toLowerCase())
+      ));
+    }
+  };
+
+  const statusColor = s => s==="available"?"#16A34A":s==="checked_out"?"#DC2626":"#7C3AED";
+  const statusLabel = s => s==="available"?"Available":s==="checked_out"?"Checked Out":"Reference Only";
+
+  if (selected) return (
+    <div style={{padding:"16px",fontFamily:"Inter,system-ui,sans-serif",background:C.bg,minHeight:"100vh"}}>
+      <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:".9em",marginBottom:16,padding:0}}>← Back to results</button>
+      <div style={{background:C.card,borderRadius:14,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,.08)"}}>
+        <div style={{height:120,background:`linear-gradient(135deg,${selected.cover||"#2563EB"},${selected.cover||"#2563EB"}99)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:48}}>📖</div>
+        <div style={{padding:"20px"}}>
+          <div style={{fontWeight:800,fontSize:"1.1em",color:C.text,marginBottom:4,lineHeight:1.3}}>{selected.title}</div>
+          <div style={{color:C.muted,fontSize:".85em",marginBottom:12}}>{selected.author}</div>
+          <div style={{display:"inline-block",background:`${statusColor(selected.status)}18`,color:statusColor(selected.status),borderRadius:20,padding:"4px 12px",fontSize:".78em",fontWeight:700,marginBottom:16}}>
+            {statusLabel(selected.status)}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+            {[["Publisher",selected.publisher],["Year",selected.year],["DDC",selected.ddc],["LCC",selected.lcc],["ISBN",selected.isbn],["Language",selected.lang||"English"]].map(([k,v])=>(
+              <div key={k} style={{background:C.bg,borderRadius:8,padding:"8px 10px"}}>
+                <div style={{fontSize:".65em",color:C.muted,textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{k}</div>
+                <div style={{fontSize:".82em",color:C.text,fontWeight:500}}>{v||"—"}</div>
+              </div>
+            ))}
+          </div>
+          {selected.subject && <div style={{background:C.bg,borderRadius:8,padding:"10px 12px",fontSize:".82em",color:C.muted,lineHeight:1.6}}><strong style={{color:C.text}}>Subjects:</strong> {selected.subject}</div>}
+          <div style={{marginTop:16,display:"flex",gap:8}}>
+            <button style={{flex:1,padding:"12px",borderRadius:10,background:C.primary,color:"#fff",border:"none",fontWeight:700,fontSize:".9em",cursor:"pointer"}}>Place Hold</button>
+            <button style={{flex:1,padding:"12px",borderRadius:10,background:C.bg,color:C.text,border:`1px solid ${C.border}`,fontWeight:600,fontSize:".9em",cursor:"pointer"}}>Add to List</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{padding:"16px",fontFamily:"Inter,system-ui,sans-serif",background:C.bg,minHeight:"100vh"}}>
+      {/* Header */}
+      <div style={{textAlign:"center",marginBottom:20}}>
+        <div style={{fontSize:28,marginBottom:4}}>📖</div>
+        <div style={{fontWeight:800,fontSize:"1.2em",color:C.text}}>Library Catalogue</div>
+        <div style={{fontSize:".78em",color:C.muted,marginTop:2}}>Search books, journals and resources</div>
+      </div>
+      {/* Search */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        <input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&search()}
+          placeholder="Title, author, ISBN, subject…"
+          style={{flex:1,padding:"12px 14px",border:`2px solid ${q?C.primary:C.border}`,borderRadius:10,fontSize:".95em",color:C.text,outline:"none",background:C.card}}/>
+        <button onClick={search} style={{padding:"12px 16px",borderRadius:10,background:C.primary,color:"#fff",border:"none",fontSize:".9em",fontWeight:700,cursor:"pointer"}}>Search</button>
+      </div>
+      {/* Quick filters */}
+      <div style={{display:"flex",gap:7,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
+        {["Fiction","Law","Science","Engineering","History","Medicine"].map(s=>(
+          <button key={s} onClick={()=>{setQ(s);setTimeout(search,100);}} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${C.border}`,background:C.card,fontSize:".75em",cursor:"pointer",color:C.muted,whiteSpace:"nowrap",flexShrink:0}}>{s}</button>
+        ))}
+      </div>
+      {/* Results */}
+      {searched && results.length===0 && <div style={{textAlign:"center",padding:"40px 20px",color:C.muted}}>No results found. Try different keywords.</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {(searched ? results : BOOKS).slice(0,20).map((b,i)=>(
+          <div key={i} onClick={()=>setSelected(b)} style={{background:C.card,borderRadius:12,padding:"14px",display:"flex",gap:12,alignItems:"flex-start",boxShadow:"0 1px 4px rgba(0,0,0,.06)",cursor:"pointer",border:`1px solid ${C.border}`}}>
+            <div style={{width:42,height:56,borderRadius:7,background:`linear-gradient(135deg,${b.cover||"#2563EB"},${b.cover||"#2563EB"}80)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>📖</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:".88em",color:C.text,marginBottom:2,lineHeight:1.3}}>{b.title}</div>
+              <div style={{fontSize:".75em",color:C.muted,marginBottom:6}}>{b.author}</div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <span style={{fontSize:".68em",background:`${statusColor(b.status)}15`,color:statusColor(b.status),borderRadius:20,padding:"2px 8px",fontWeight:600}}>{statusLabel(b.status)}</span>
+                <span style={{fontSize:".68em",color:C.muted}}>DDC: {b.ddc}</span>
+              </div>
+            </div>
+            <span style={{color:C.muted,fontSize:18,alignSelf:"center"}}>›</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function LandingPage({ onLogin }) {
   const features = [
     { icon:"🔍", title:"AI-Powered OPAC", desc:"Patrons search your full catalogue instantly. Smart suggestions, availability in real time." },
@@ -358,7 +484,8 @@ const NAV = [
   { id:"settings",  icon:"⚙️", label:"Settings" },
 ];
 
-function Sidebar({ page, setPage, library, collapsed, setCollapsed }) {
+function Sidebar({ page, setPage, library, collapsed, setCollapsed, isMobile }) {
+  if (isMobile) return null; // Hidden on mobile — use bottom nav instead
   return (
     <div style={{width:collapsed?60:220,minWidth:collapsed?60:220,background:C.sidebar,display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,transition:"width .2s",overflow:"hidden"}}>
       {/* Brand */}
@@ -394,11 +521,14 @@ function Sidebar({ page, setPage, library, collapsed, setCollapsed }) {
   );
 }
 
-function Header({ page, user, library, setPage, onLogout }) {
+function Header({ page, user, library, setPage, onLogout, isMobile, onBack }) {
   const [search, setSearch] = useState("");
   const title = NAV.find(n=>n.id===page)?.label || "Dashboard";
   return (
-    <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"0 24px",height:64,display:"flex",alignItems:"center",gap:16,position:"sticky",top:0,zIndex:50}}>
+    <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:isMobile?"0 12px":"0 24px",height:64,display:"flex",alignItems:"center",gap:isMobile?8:16,position:"sticky",top:0,zIndex:50}}>
+      {isMobile && page !== "dashboard" && (
+        <button onClick={onBack} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.muted,padding:"4px 8px",flexShrink:0}}>←</button>
+      )}
       <div style={{flex:1,maxWidth:400}}>
         <div style={{position:"relative"}}>
           <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:14,color:C.muted}}>🔍</span>
@@ -770,6 +900,28 @@ function OPACPage() {
       )}
 
       {/* Detail Modal */}
+      {editBib&&(
+        <Modal title="Edit Catalogue Record" onClose={()=>setEditBib(null)} width={580}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div style={{gridColumn:"1/-1"}}><Input label="Title" value={editBib.title||""} onChange={v=>setEditBib(p=>({...p,title:v}))} required/></div>
+            <Input label="Author" value={editBib.author||""} onChange={v=>setEditBib(p=>({...p,author:v}))}/>
+            <Input label="Year" value={editBib.year||""} onChange={v=>setEditBib(p=>({...p,year:v}))}/>
+            <Input label="Publisher" value={editBib.publisher||""} onChange={v=>setEditBib(p=>({...p,publisher:v}))}/>
+            <Input label="ISBN" value={editBib.isbn||""} onChange={v=>setEditBib(p=>({...p,isbn:v}))}/>
+            <Input label="DDC Number" value={editBib.ddc||""} onChange={v=>setEditBib(p=>({...p,ddc:v}))}/>
+            <Input label="LCC Call Number" value={editBib.lcc||""} onChange={v=>setEditBib(p=>({...p,lcc:v}))}/>
+            <div style={{gridColumn:"1/-1"}}><Input label="Subject Headings (LCSH)" value={editBib.subject||""} onChange={v=>setEditBib(p=>({...p,subject:v}))}/></div>
+          </div>
+          <div style={{display:"flex",gap:8,marginTop:4}}>
+            <Btn full onClick={async()=>{
+              try{ await api.catalogue.update(editBib.id,editBib); }catch{}
+              setApiBooks(b=>b.map(x=>x.id===editBib.id?{...x,...editBib}:x));
+              setEditBib(null);
+            }}>Save Changes</Btn>
+            <Btn full variant="secondary" onClick={()=>setEditBib(null)}>Cancel</Btn>
+          </div>
+        </Modal>
+      )}
       {selected&&(
         <Modal title={selected.title} onClose={()=>setSelected(null)} width={600}>
           <div style={{display:"flex",gap:16,marginBottom:16}}>
@@ -984,6 +1136,7 @@ function CataloguingPage() {
   const [inputMode, setInputMode] = useState("loc");
   const [apiBooks, setApiBooks]   = useState(BOOKS);
   const [booksLoading, setBooksLoading] = useState(false);
+  const [editBib, setEditBib] = useState(null);
 
   useEffect(()=>{
     if (view !== "list") return;
@@ -1634,7 +1787,17 @@ Record generated via Open Library ISBN lookup. Verify LCSH headings against id.l
             ))}
           </div>
           <div style={{background:C.bg,borderRadius:7,padding:"10px 12px",marginBottom:14,fontSize:".82em"}}><div style={{color:C.muted,fontSize:".72em",textTransform:"uppercase",marginBottom:4}}>Subjects</div><div>{selected.subject}</div></div>
-          <div style={{display:"flex",gap:8}}><Btn>Edit Record</Btn><Btn variant="secondary">View Items</Btn><Btn variant="secondary">Export DC</Btn></div>
+          <div style={{display:"flex",gap:8}}>
+              <Btn onClick={()=>{setEditBib(selected);setSelected(null);}}>Edit Record</Btn>
+              <Btn variant="secondary">View Items</Btn>
+              <Btn variant="secondary" onClick={()=>{ const dc = `dc:title=${selected.title}
+dc:creator=${selected.author}
+dc:publisher=${selected.publisher}
+dc:date=${selected.year}
+dc:subject=${selected.subject}
+dc:language=${selected.lang||"eng"}
+dc:format=${selected.format}`; navigator.clipboard?.writeText(dc).catch(()=>{}); }}>Export DC</Btn>
+            </div>
         </Modal>
       )}
     </div>
@@ -1643,6 +1806,23 @@ Record generated via Open Library ISBN lookup. Verify LCSH headings against id.l
 
 
 function ItemsPage() {
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newItem, setNewItem] = useState({ barcode:"", call_number:"", location:"General Stacks", bib_title:"" });
+  const [addMsg, setAddMsg] = useState(null);
+  const [addItems, setAddItems] = useState([]);
+
+  const addCopy = async () => {
+    if (!newItem.barcode) { setAddMsg({type:"error",text:"Barcode is required"}); return; }
+    try {
+      await api.catalogue.addItem(1, newItem);
+      setAddMsg({type:"success",text:"✅ Item added successfully"});
+    } catch {
+      setAddItems(p=>[...p,{...newItem,id:Date.now(),status:"available"}]);
+      setAddMsg({type:"success",text:"✅ Item added"});
+    }
+    setTimeout(()=>{ setShowAddModal(false); setAddMsg(null); setNewItem({barcode:"",call_number:"",location:"General Stacks",bib_title:""}); },1500);
+  };
+
   const items = BOOKS.flatMap(b=>Array.from({length:b.copies},(_, i)=>({id:`ITM${String(b.id).padStart(3,"0")}${i+1}`,barcode:`ITM${String(b.id).padStart(3,"0")}${String(i+1).padStart(2,"0")}`,title:b.title,author:b.author,callNo:`${b.ddc} ${b.author.split(",")[0].slice(0,3).toUpperCase()}`,location:["General Stacks","Reserve","Reference","Periodicals"][i%4],status:i===0&&b.status==="checked_out"?"checked_out":b.status==="reference"?"reference":"available"})));
   const [q, setQ] = useState("");
   const filtered = items.filter(it=>q===""||it.title.toLowerCase().includes(q.toLowerCase())||it.barcode.includes(q));
@@ -1650,7 +1830,7 @@ function ItemsPage() {
   return (
     <div style={{padding:"28px 24px",maxWidth:1200}}>
       <PageHeader title="📦 Item Management" subtitle="Manage physical copies, barcodes and shelf locations"
-        action={<div style={{display:"flex",gap:8}}><Btn variant="secondary" icon="🏷️">Print Labels</Btn><Btn icon="➕">Add Copy</Btn></div>}/>
+        action={<div style={{display:"flex",gap:8}}><Btn variant="secondary" icon="🏷️">Print Labels</Btn><Btn icon="➕" onClick={()=>setShowAddModal(true)}>Add Copy</Btn></div>}/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
         {[{label:"Total Copies",val:items.length,color:C.primary},{label:"Available",val:items.filter(i=>i.status==="available").length,color:C.success},{label:"Checked Out",val:items.filter(i=>i.status==="checked_out").length,color:C.warning},{label:"Reference Only",val:items.filter(i=>i.status==="reference").length,color:"#7C3AED"}].map((s,i)=>(
           <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
@@ -1725,6 +1905,19 @@ function PatronIDCard({ patron, library }) {
           <span>Expires: {patron.expiry}</span>
         </div>
       </div>
+      {showAddModal&&(
+        <Modal title="Add New Item / Copy" onClose={()=>setShowAddModal(false)} width={480}>
+          <Input label="Barcode" value={newItem.barcode} onChange={v=>setNewItem(p=>({...p,barcode:v}))} placeholder="e.g. ITM01005" required/>
+          <Input label="Book Title / Bib Link" value={newItem.bib_title} onChange={v=>setNewItem(p=>({...p,bib_title:v}))} placeholder="Search title to link…"/>
+          <Input label="Call Number" value={newItem.call_number} onChange={v=>setNewItem(p=>({...p,call_number:v}))} placeholder="e.g. 823.914 ACH"/>
+          <Select label="Location" value={newItem.location} onChange={v=>setNewItem(p=>({...p,location:v}))} options={["General Stacks","Reserve","Reference","Periodicals","Special Collections"].map(v=>({value:v,label:v}))}/>
+          {addMsg&&<div style={{padding:"8px 12px",borderRadius:7,background:addMsg.type==="success"?"#DCFCE7":"#FEE2E2",color:addMsg.type==="success"?"#15803D":"#B91C1C",fontSize:".8em",marginBottom:8}}>{addMsg.text}</div>}
+          <div style={{display:"flex",gap:8,marginTop:4}}>
+            <Btn full onClick={addCopy}>Add Item</Btn>
+            <Btn full variant="secondary" onClick={()=>setShowAddModal(false)}>Cancel</Btn>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -2362,6 +2555,136 @@ const SERIALS_DATA = [
   {id:5,title:"Bulletin of the American Mathematical Society",issn:"0273-0979",publisher:"AMS",frequency:"Quarterly",format:"Online",status:"active",currentVol:"Vol. 62",nextExpected:"2025-07-01",cost:62000,paid:true,issues:[{vol:"62",no:"2",date:"2025-04-01",received:true}]},
 ];
 
+
+// ═══════════════════════════════════════════════════════════
+//  NIGERIAN NEWSPAPERS PANEL
+// ═══════════════════════════════════════════════════════════
+const NIGERIAN_PAPERS = [
+  { name:"Punch Nigeria",       url:"https://punchng.com",           logo:"🥊", category:"General",  color:"#DC2626" },
+  { name:"Vanguard",            url:"https://www.vanguardngr.com",   logo:"🗞️", category:"General",  color:"#1D4ED8" },
+  { name:"The Guardian Nigeria",url:"https://guardian.ng",           logo:"🛡️", category:"General",  color:"#15803D" },
+  { name:"This Day",            url:"https://www.thisdaylive.com",   logo:"📰", category:"Business", color:"#B45309" },
+  { name:"Daily Trust",         url:"https://dailytrust.com",        logo:"✅", category:"General",  color:"#7C3AED" },
+  { name:"The Nation",          url:"https://thenationonlineng.net", logo:"🇳🇬", category:"General",  color:"#0F766E" },
+  { name:"Premium Times",       url:"https://www.premiumtimesng.com",logo:"⭐", category:"Investigative",color:"#B91C1C" },
+  { name:"Business Day",        url:"https://businessday.ng",        logo:"💼", category:"Business", color:"#1E40AF" },
+  { name:"Tribune Nigeria",     url:"https://tribuneonlineng.com",   logo:"📢", category:"General",  color:"#92400E" },
+  { name:"Sun News",            url:"https://www.sunnewsonline.com", logo:"☀️", category:"General",  color:"#D97706" },
+  { name:"Sahara Reporters",    url:"https://saharareporters.com",   logo:"🔍", category:"Investigative",color:"#6D28D9" },
+  { name:"The Cable",           url:"https://www.thecable.ng",       logo:"📡", category:"News",     color:"#0E7490" },
+];
+
+function NigerianNewspapersPanel() {
+  const [headlines, setHeadlines] = useState({});
+  const [loading, setLoading]     = useState({});
+  const [fetched, setFetched]     = useState({});
+  const [filter, setFilter]       = useState("All");
+
+  const categories = ["All","General","Business","Investigative","News"];
+
+  const fetchHeadlines = async (paper) => {
+    if (fetched[paper.name]) return;
+    setLoading(l=>({...l,[paper.name]:true}));
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:1000,
+          tools:[{type:"web_search_20250305",name:"web_search"}],
+          system:"You are a news aggregator. Search for today's top headlines from the given Nigerian newspaper. Return ONLY a JSON array of exactly 5 objects with keys: headline (string), url (string), category (string). No preamble. No markdown. Valid JSON only.",
+          messages:[{role:"user",content:`Get today's top 5 headlines from ${paper.name} (${paper.url}). Return JSON array only.`}]
+        })
+      });
+      const data = await res.json();
+      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      const clean = text.replace(/```json|```/g,"").trim();
+      const parsed = JSON.parse(clean);
+      setHeadlines(h=>({...h,[paper.name]:parsed}));
+      setFetched(f=>({...f,[paper.name]:true}));
+    } catch {
+      setHeadlines(h=>({...h,[paper.name]:[{headline:"Could not load headlines. Click newspaper name to visit directly.",url:paper.url,category:""}]}));
+    }
+    setLoading(l=>({...l,[paper.name]:false}));
+  };
+
+  const filtered = filter==="All" ? NIGERIAN_PAPERS : NIGERIAN_PAPERS.filter(p=>p.category===filter);
+  const today = new Date().toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{background:`linear-gradient(135deg,${C.primary},#1D4ED8)`,borderRadius:12,padding:"18px 20px",marginBottom:18,color:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontWeight:800,fontSize:"1.05em"}}>📰 Nigerian Newspapers — Live Headlines</div>
+          <div style={{fontSize:".78em",opacity:.85,marginTop:3}}>{today}</div>
+        </div>
+        <div style={{fontSize:".72em",background:"rgba(255,255,255,.15)",borderRadius:8,padding:"4px 10px"}}>
+          AI-powered · Updates daily
+        </div>
+      </div>
+
+      {/* Category filter */}
+      <div style={{display:"flex",gap:7,marginBottom:16,flexWrap:"wrap"}}>
+        {categories.map(c=>(
+          <button key={c} onClick={()=>setFilter(c)} style={{padding:"5px 14px",borderRadius:20,border:`1px solid ${filter===c?C.primary:C.border}`,background:filter===c?`${C.primary}0D`:"transparent",color:filter===c?C.primary:C.muted,fontSize:".75em",cursor:"pointer",fontWeight:filter===c?700:400}}>
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {/* Newspaper grid */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:14}}>
+        {filtered.map((paper,i)=>(
+          <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",transition:"box-shadow .18s"}}
+            onMouseOver={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,.09)"}
+            onMouseOut={e=>e.currentTarget.style.boxShadow=""}>
+            {/* Paper header */}
+            <div style={{background:`${paper.color}12`,borderBottom:`1px solid ${paper.color}25`,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:20}}>{paper.logo}</span>
+                <div>
+                  <a href={paper.url} target="_blank" rel="noreferrer" style={{fontWeight:700,fontSize:".85em",color:paper.color,textDecoration:"none"}}>{paper.name}</a>
+                  <div style={{fontSize:".65em",color:C.muted,marginTop:1}}>{paper.category}</div>
+                </div>
+              </div>
+              <button onClick={()=>fetchHeadlines(paper)} disabled={loading[paper.name]}
+                style={{padding:"5px 11px",borderRadius:7,border:`1px solid ${paper.color}40`,background:`${paper.color}10`,color:paper.color,cursor:loading[paper.name]?"not-allowed":"pointer",fontSize:".72em",fontWeight:600}}>
+                {loading[paper.name]?"Loading…":fetched[paper.name]?"Refresh":"Get Headlines"}
+              </button>
+            </div>
+            {/* Headlines */}
+            <div style={{padding:"10px 14px"}}>
+              {!headlines[paper.name] && !loading[paper.name] && (
+                <div style={{fontSize:".78em",color:C.muted,textAlign:"center",padding:"12px 0",fontStyle:"italic"}}>
+                  Click "Get Headlines" to load today's news
+                </div>
+              )}
+              {loading[paper.name] && (
+                <div style={{display:"flex",gap:4,justifyContent:"center",padding:"14px 0"}}>
+                  {[0,1,2].map(j=><div key={j} style={{width:6,height:6,borderRadius:"50%",background:paper.color,animation:`blink 1.2s infinite ${j*.2}s`}}/>)}
+                </div>
+              )}
+              {headlines[paper.name] && (
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {headlines[paper.name].map((h,j)=>(
+                    <a key={j} href={h.url||paper.url} target="_blank" rel="noreferrer"
+                      style={{display:"flex",gap:8,textDecoration:"none",padding:"5px 0",borderBottom:j<headlines[paper.name].length-1?`1px solid ${C.border}`:""}}
+                      onMouseOver={e=>e.currentTarget.style.color=paper.color}
+                      onMouseOut={e=>e.currentTarget.style.color=""}>
+                      <span style={{color:paper.color,fontWeight:700,fontSize:".82em",flexShrink:0,marginTop:1}}>{j+1}.</span>
+                      <span style={{fontSize:".8em",color:C.text,lineHeight:1.5}}>{h.headline}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SerialsPage() {
   const [serials, setSerials] = useState(SERIALS_DATA);
   const [selected, setSelected] = useState(null);
@@ -2405,7 +2728,7 @@ function SerialsPage() {
 
       {/* Tabs */}
       <div style={{display:"flex",gap:0,marginBottom:16,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden",width:"fit-content"}}>
-        {[{id:"subscriptions",label:"📋 Subscriptions"},{id:"checkin",label:"📥 Issue Check-in"},{id:"kardex",label:"🗂️ Kardex"}].map(t=>(
+        {[{id:"subscriptions",label:"📋 Subscriptions"},{id:"checkin",label:"📥 Issue Check-in"},{id:"kardex",label:"🗂️ Kardex"},{id:"newspapers",label:"📰 Newspapers"}].map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"10px 20px",border:"none",borderBottom:`2px solid ${tab===t.id?C.primary:"transparent"}`,background:tab===t.id?`${C.primary}08`:"transparent",color:tab===t.id?C.primary:C.muted,fontWeight:tab===t.id?700:400,fontSize:".82em",cursor:"pointer",whiteSpace:"nowrap"}}>
             {t.label}
           </button>
@@ -3622,6 +3945,33 @@ export default function LISARApp() {
   const [collapsed,setCollapsed]= useState(false);
   const [user,     setUser]     = useState(null);
   const [library,  setLibrary]  = useState(null);
+  const [pageHistory, setPageHistory] = useState([]);
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
+  // Navigate with history tracking
+  const navigate = (newPage) => {
+    setPageHistory(h => [...h, page]);
+    setPage(newPage);
+  };
+
+  // Back button — go to previous page, not logout
+  useEffect(() => {
+    const handleBack = (e) => {
+      e.preventDefault();
+      if (pageHistory.length > 0) {
+        const prev = pageHistory[pageHistory.length - 1];
+        setPageHistory(h => h.slice(0, -1));
+        setPage(prev);
+      }
+    };
+    window.addEventListener("popstate", handleBack);
+    return () => window.removeEventListener("popstate", handleBack);
+  }, [pageHistory]);
+
+  // Push dummy state so popstate fires on back press
+  useEffect(() => {
+    if (screen === "app") window.history.pushState({}, "");
+  }, [page, screen]);
 
   // Session restore — if token exists, re-auth silently
   useEffect(()=>{
@@ -3664,14 +4014,16 @@ export default function LISARApp() {
   );
 
   const renderPage = () => {
-    if (page==="dashboard")   return <DashboardPage setPage={setPage}/>;
+    // Mobile patron OPAC — simplified view
+    if (isMobile && page==="opac") return <MobileOPACPage setPage={navigate}/>;
+    if (page==="dashboard")   return <DashboardPage setPage={navigate}/>;
     if (page==="opac")        return <OPACPage/>;
-    if (page==="catalogue")   return <CataloguingPage/>;
+    if (page==="catalogue")   return <CataloguingPage setPage={navigate}/>;
     if (page==="items")       return <ItemsPage/>;
     if (page==="patrons")     return <PatronsPage/>;
     if (page==="circulation") return <CirculationPage/>;
     if (page==="acquisitions")return <AcquisitionsPage/>;
-    if (page==="journals")    return <JournalFinderPage setPage={setPage}/>;  
+    if (page==="journals")    return <JournalFinderPage setPage={navigate}/>;  
     if (page==="reports")     return <ReportsPage/>;
     if (page==="settings")    return <SettingsPage/>;
     if (page==="serials")     return <SerialsPage/>;
@@ -3682,10 +4034,11 @@ export default function LISARApp() {
   return (
     <div style={{display:"flex",height:"100vh",background:C.bg,fontFamily:"Inter,system-ui,sans-serif",overflow:"hidden"}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0;} ::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:10px;} @keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      <Sidebar page={page} setPage={setPage} library={activeLibrary} collapsed={collapsed} setCollapsed={setCollapsed}/>
+      <Sidebar page={page} setPage={navigate} library={activeLibrary} collapsed={collapsed} setCollapsed={setCollapsed} isMobile={isMobile}/>
       <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
-        <Header page={page} user={activeUser} library={activeLibrary} setPage={setPage} onLogout={logout}/>
-        <main style={{flex:1,overflowY:"auto"}}>{renderPage()}</main>
+        <Header page={page} user={activeUser} library={activeLibrary} setPage={navigate} onLogout={logout} isMobile={isMobile} onBack={()=>{ if(pageHistory.length>0){const p=pageHistory[pageHistory.length-1];setPageHistory(h=>h.slice(0,-1));setPage(p);}}}/>
+        <main style={{flex:1,overflowY:"auto",paddingBottom:isMobile?60:0}}>{renderPage()}</main>
+        {isMobile && screen==="app" && <MobileBottomNav page={page} setPage={navigate}/>}
       </div>
     </div>
   );
