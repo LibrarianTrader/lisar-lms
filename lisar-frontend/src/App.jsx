@@ -1240,7 +1240,7 @@ LDR, 008, 020/022, 040, 050 ($a $b), 082 ($a $2 23), 1XX, 245, 250, 264, 300, 33
 Title proper, Statement of responsibility, Edition, Publication, Extent, Identifier
 
 ## Cataloguer's Notes
-Classification decisions, alternative numbers considered, notes on Nigerian/African context if applicable.`;
+Classification decisions, alternative numbers considered, notes on Nigerian/African context if applicable.\`;
 
     const userMsg = `Generate catalogue record from this LOC Catalog data:
 
