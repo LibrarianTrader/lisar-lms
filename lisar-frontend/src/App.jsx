@@ -1,6 +1,24 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import api, { setToken, getToken } from "./api";
 
+const MOBILE_CSS = `
+@media (max-width:768px){
+  .sidebar-desktop{display:none!important;}
+  .mobile-nav{display:flex!important;}
+  .main-header{padding:0 12px!important;}
+  .page-content{padding:16px 12px!important;}
+  .stat-grid{grid-template-columns:1fr 1fr!important;}
+  .table-wrap{overflow-x:auto;}
+  .hide-mobile{display:none!important;}
+  .modal-inner{width:95vw!important;max-height:90vh!important;}
+  .form-grid-2{grid-template-columns:1fr!important;}
+}
+@media (min-width:769px){
+  .mobile-nav{display:none!important;}
+  .sidebar-desktop{display:flex!important;}
+}
+`;
+
 // ═══════════════════════════════════════════════════════════
 //  MOCK DATA
 // ═══════════════════════════════════════════════════════════
@@ -163,132 +181,6 @@ function Select({ label, value, onChange, options }) {
 // ═══════════════════════════════════════════════════════════
 //  LANDING PAGE
 // ═══════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════
-//  MOBILE BOTTOM NAV
-// ═══════════════════════════════════════════════════════════
-function MobileBottomNav({ page, setPage }) {
-  const tabs = [
-    { id:"dashboard", icon:"🏠", label:"Home" },
-    { id:"opac",      icon:"🔍", label:"Search" },
-    { id:"catalogue", icon:"📚", label:"Catalogue" },
-    { id:"circulation",icon:"🔄",label:"Desk" },
-    { id:"patrons",   icon:"👥", label:"Patrons" },
-  ];
-  return (
-    <div style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:200,height:58}}>
-      {tabs.map(t=>(
-        <button key={t.id} onClick={()=>setPage(t.id)}
-          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:"none",cursor:"pointer",color:page===t.id?C.primary:C.muted,borderTop:`2px solid ${page===t.id?C.primary:"transparent"}`}}>
-          <span style={{fontSize:18}}>{t.icon}</span>
-          <span style={{fontSize:".6em",fontWeight:page===t.id?700:400}}>{t.label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════
-//  MOBILE OPAC — Patron-facing simplified search
-// ═══════════════════════════════════════════════════════════
-function MobileOPACPage({ setPage }) {
-  const [q, setQ] = useState("");
-  const [results, setResults] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [searched, setSearched] = useState(false);
-
-  const search = async () => {
-    setSearched(true);
-    try {
-      const data = await api.catalogue.list({ q });
-      setResults(data?.bibs || BOOKS.filter(b=>
-        b.title.toLowerCase().includes(q.toLowerCase()) ||
-        (b.author||"").toLowerCase().includes(q.toLowerCase()) ||
-        (b.subject||"").toLowerCase().includes(q.toLowerCase())
-      ));
-    } catch {
-      setResults(BOOKS.filter(b=>
-        b.title.toLowerCase().includes(q.toLowerCase()) ||
-        (b.author||"").toLowerCase().includes(q.toLowerCase())
-      ));
-    }
-  };
-
-  const statusColor = s => s==="available"?"#16A34A":s==="checked_out"?"#DC2626":"#7C3AED";
-  const statusLabel = s => s==="available"?"Available":s==="checked_out"?"Checked Out":"Reference Only";
-
-  if (selected) return (
-    <div style={{padding:"16px",fontFamily:"Inter,system-ui,sans-serif",background:C.bg,minHeight:"100vh"}}>
-      <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:".9em",marginBottom:16,padding:0}}>← Back to results</button>
-      <div style={{background:C.card,borderRadius:14,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,.08)"}}>
-        <div style={{height:120,background:`linear-gradient(135deg,${selected.cover||"#2563EB"},${selected.cover||"#2563EB"}99)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:48}}>📖</div>
-        <div style={{padding:"20px"}}>
-          <div style={{fontWeight:800,fontSize:"1.1em",color:C.text,marginBottom:4,lineHeight:1.3}}>{selected.title}</div>
-          <div style={{color:C.muted,fontSize:".85em",marginBottom:12}}>{selected.author}</div>
-          <div style={{display:"inline-block",background:`${statusColor(selected.status)}18`,color:statusColor(selected.status),borderRadius:20,padding:"4px 12px",fontSize:".78em",fontWeight:700,marginBottom:16}}>
-            {statusLabel(selected.status)}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
-            {[["Publisher",selected.publisher],["Year",selected.year],["DDC",selected.ddc],["LCC",selected.lcc],["ISBN",selected.isbn],["Language",selected.lang||"English"]].map(([k,v])=>(
-              <div key={k} style={{background:C.bg,borderRadius:8,padding:"8px 10px"}}>
-                <div style={{fontSize:".65em",color:C.muted,textTransform:"uppercase",letterSpacing:".05em",marginBottom:2}}>{k}</div>
-                <div style={{fontSize:".82em",color:C.text,fontWeight:500}}>{v||"—"}</div>
-              </div>
-            ))}
-          </div>
-          {selected.subject && <div style={{background:C.bg,borderRadius:8,padding:"10px 12px",fontSize:".82em",color:C.muted,lineHeight:1.6}}><strong style={{color:C.text}}>Subjects:</strong> {selected.subject}</div>}
-          <div style={{marginTop:16,display:"flex",gap:8}}>
-            <button style={{flex:1,padding:"12px",borderRadius:10,background:C.primary,color:"#fff",border:"none",fontWeight:700,fontSize:".9em",cursor:"pointer"}}>Place Hold</button>
-            <button style={{flex:1,padding:"12px",borderRadius:10,background:C.bg,color:C.text,border:`1px solid ${C.border}`,fontWeight:600,fontSize:".9em",cursor:"pointer"}}>Add to List</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{padding:"16px",fontFamily:"Inter,system-ui,sans-serif",background:C.bg,minHeight:"100vh"}}>
-      {/* Header */}
-      <div style={{textAlign:"center",marginBottom:20}}>
-        <div style={{fontSize:28,marginBottom:4}}>📖</div>
-        <div style={{fontWeight:800,fontSize:"1.2em",color:C.text}}>Library Catalogue</div>
-        <div style={{fontSize:".78em",color:C.muted,marginTop:2}}>Search books, journals and resources</div>
-      </div>
-      {/* Search */}
-      <div style={{display:"flex",gap:8,marginBottom:16}}>
-        <input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&search()}
-          placeholder="Title, author, ISBN, subject…"
-          style={{flex:1,padding:"12px 14px",border:`2px solid ${q?C.primary:C.border}`,borderRadius:10,fontSize:".95em",color:C.text,outline:"none",background:C.card}}/>
-        <button onClick={search} style={{padding:"12px 16px",borderRadius:10,background:C.primary,color:"#fff",border:"none",fontSize:".9em",fontWeight:700,cursor:"pointer"}}>Search</button>
-      </div>
-      {/* Quick filters */}
-      <div style={{display:"flex",gap:7,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
-        {["Fiction","Law","Science","Engineering","History","Medicine"].map(s=>(
-          <button key={s} onClick={()=>{setQ(s);setTimeout(search,100);}} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${C.border}`,background:C.card,fontSize:".75em",cursor:"pointer",color:C.muted,whiteSpace:"nowrap",flexShrink:0}}>{s}</button>
-        ))}
-      </div>
-      {/* Results */}
-      {searched && results.length===0 && <div style={{textAlign:"center",padding:"40px 20px",color:C.muted}}>No results found. Try different keywords.</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {(searched ? results : BOOKS).slice(0,20).map((b,i)=>(
-          <div key={i} onClick={()=>setSelected(b)} style={{background:C.card,borderRadius:12,padding:"14px",display:"flex",gap:12,alignItems:"flex-start",boxShadow:"0 1px 4px rgba(0,0,0,.06)",cursor:"pointer",border:`1px solid ${C.border}`}}>
-            <div style={{width:42,height:56,borderRadius:7,background:`linear-gradient(135deg,${b.cover||"#2563EB"},${b.cover||"#2563EB"}80)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>📖</div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontWeight:700,fontSize:".88em",color:C.text,marginBottom:2,lineHeight:1.3}}>{b.title}</div>
-              <div style={{fontSize:".75em",color:C.muted,marginBottom:6}}>{b.author}</div>
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                <span style={{fontSize:".68em",background:`${statusColor(b.status)}15`,color:statusColor(b.status),borderRadius:20,padding:"2px 8px",fontWeight:600}}>{statusLabel(b.status)}</span>
-                <span style={{fontSize:".68em",color:C.muted}}>DDC: {b.ddc}</span>
-              </div>
-            </div>
-            <span style={{color:C.muted,fontSize:18,alignSelf:"center"}}>›</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function LandingPage({ onLogin }) {
   const features = [
     { icon:"🔍", title:"AI-Powered OPAC", desc:"Patrons search your full catalogue instantly. Smart suggestions, availability in real time." },
@@ -383,38 +275,29 @@ function LandingPage({ onLogin }) {
 //  LOGIN PAGE
 // ═══════════════════════════════════════════════════════════
 function LoginPage({ onLogin, goLanding }) {
-  const [tab,      setTab]      = useState("login");
-  const [email,    setEmail]    = useState("");
-  const [pass,     setPass]     = useState("");
-  const [name,     setName]     = useState("");
-  const [lib,      setLib]      = useState("");
-  const [libType,  setLibType]  = useState("academic");
-  const [loading,  setLoading]  = useState(false);
-  const [errMsg,   setErrMsg]   = useState("");
+  const [tab,     setTab]     = useState("login");
+  const [email,   setEmail]   = useState("");
+  const [pass,    setPass]    = useState("");
+  const [name,    setName]    = useState("");
+  const [lib,     setLib]     = useState("");
+  const [libType, setLibType] = useState("academic");
+  const [loading, setLoading] = useState(false);
+  const [errMsg,  setErrMsg]  = useState("");
 
   const handleLogin = async () => {
-    if (!email || !pass) { setErrMsg("Email and password are required"); return; }
-    setLoading(true); setErrMsg("");
-    try {
-      const data = await api.login(email.trim(), pass);
-      onLogin(data);
-    } catch (e) {
-      setErrMsg(e.message || "Invalid email or password");
-    } finally { setLoading(false); }
+    if(!email||!pass){setErrMsg("Email and password required");return;}
+    setLoading(true);setErrMsg("");
+    try{const d=await api.login(email.trim(),pass);onLogin(d);}
+    catch(e){setErrMsg(e.message||"Invalid email or password");}
+    finally{setLoading(false);}
   };
-
   const handleRegister = async () => {
-    if (!name || !lib || !email || !pass) { setErrMsg("All fields are required"); return; }
-    setLoading(true); setErrMsg("");
-    try {
-      const data = await api.auth.register({ name, libraryName: lib, email: email.trim(), password: pass, libraryType: libType });
-      setToken(data.token);
-      onLogin(data);
-    } catch (e) {
-      setErrMsg(e.message || "Registration failed");
-    } finally { setLoading(false); }
+    if(!name||!lib||!email||!pass){setErrMsg("All fields required");return;}
+    setLoading(true);setErrMsg("");
+    try{const d=await api.auth.register({name,libraryName:lib,email:email.trim(),password:pass,libraryType:libType});setToken(d.token);onLogin(d);}
+    catch(e){setErrMsg(e.message||"Registration failed");}
+    finally{setLoading(false);}
   };
-
   return (
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"Inter,system-ui,sans-serif"}}>
       <div style={{width:"min(420px,100%"}}>
@@ -437,10 +320,10 @@ function LoginPage({ onLogin, goLanding }) {
                 <div style={{background:`${C.primary}0D`,border:`1px solid ${C.primary}25`,borderRadius:8,padding:"10px 14px",marginBottom:18,fontSize:".78em",color:C.primary}}>
                   <strong>Demo credentials</strong><br/>Email: demo@lisar.app &nbsp;·&nbsp; Password: demo123
                 </div>
-                {errMsg && <div style={{background:"#FEE2E2",border:"1px solid #FECACA",borderRadius:7,padding:"8px 12px",marginBottom:12,fontSize:".8em",color:"#B91C1C"}}>{errMsg}</div>}
                 <Input label="Email" value={email} onChange={setEmail} placeholder="you@library.edu"/>
                 <Input label="Password" type="password" value={pass} onChange={setPass} placeholder="••••••••"/>
-                <Btn full onClick={handleLogin} size="lg" disabled={loading}>{loading ? "Signing in…" : "Sign In →"}</Btn>
+                {errMsg&&<div style={{background:"#FEE2E2",borderRadius:7,padding:"8px 12px",marginBottom:12,fontSize:".8em",color:"#B91C1C"}}>{errMsg}</div>}
+                <Btn full onClick={handleLogin} size="lg" disabled={loading}>{loading?"Signing in…":"Sign In →"}</Btn>
                 <div style={{textAlign:"center",marginTop:14,fontSize:".78em",color:C.muted}}>
                   Don't have an account? <button onClick={()=>setTab("register")} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:600}}>Create one free</button>
                 </div>
@@ -451,9 +334,9 @@ function LoginPage({ onLogin, goLanding }) {
                 <Input label="Library Name" value={lib} onChange={setLib} placeholder="e.g. Unilag Main Library" required/>
                 <Input label="Email" value={email} onChange={setEmail} placeholder="library@institution.edu" required/>
                 <Input label="Password" type="password" value={pass} onChange={setPass} placeholder="Create a password" required/>
-                {errMsg && <div style={{background:"#FEE2E2",border:"1px solid #FECACA",borderRadius:7,padding:"8px 12px",marginBottom:12,fontSize:".8em",color:"#B91C1C"}}>{errMsg}</div>}
-                <Select label="Library Type" value={libType} onChange={setLibType} options={[{value:"academic",label:"Academic / University"},{value:"public",label:"Public Library"},{value:"school",label:"School Library"},{value:"special",label:"Special / Corporate"}]}/>
-                <Btn full onClick={handleRegister} size="lg" disabled={loading}>{loading ? "Creating account…" : "Create Free Account →"}</Btn>
+                <Select label="Library Type" value="academic" onChange={()=>{}} options={[{value:"academic",label:"Academic / University"},{value:"public",label:"Public Library"},{value:"school",label:"School Library"},{value:"special",label:"Special / Corporate"}]}/>
+                {errMsg&&<div style={{background:"#FEE2E2",borderRadius:7,padding:"8px 12px",marginBottom:12,fontSize:".8em",color:"#B91C1C"}}>{errMsg}</div>}
+                <Btn full onClick={handleRegister} size="lg" disabled={loading}>{loading?"Creating…":"Create Free Account →"}</Btn>
               </>
             )}
           </div>
@@ -484,8 +367,7 @@ const NAV = [
   { id:"settings",  icon:"⚙️", label:"Settings" },
 ];
 
-function Sidebar({ page, setPage, library, collapsed, setCollapsed, isMobile }) {
-  if (isMobile) return null; // Hidden on mobile — use bottom nav instead
+function Sidebar({ page, setPage, library, collapsed, setCollapsed }) {
   return (
     <div style={{width:collapsed?60:220,minWidth:collapsed?60:220,background:C.sidebar,display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,transition:"width .2s",overflow:"hidden"}}>
       {/* Brand */}
@@ -521,14 +403,11 @@ function Sidebar({ page, setPage, library, collapsed, setCollapsed, isMobile }) 
   );
 }
 
-function Header({ page, user, library, setPage, onLogout, isMobile, onBack }) {
+function Header({ page, user, library, setPage, onLogout }) {
   const [search, setSearch] = useState("");
   const title = NAV.find(n=>n.id===page)?.label || "Dashboard";
   return (
-    <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:isMobile?"0 12px":"0 24px",height:64,display:"flex",alignItems:"center",gap:isMobile?8:16,position:"sticky",top:0,zIndex:50}}>
-      {isMobile && page !== "dashboard" && (
-        <button onClick={onBack} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:C.muted,padding:"4px 8px",flexShrink:0}}>←</button>
-      )}
+    <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"0 24px",height:64,display:"flex",alignItems:"center",gap:16,position:"sticky",top:0,zIndex:50}}>
       <div style={{flex:1,maxWidth:400}}>
         <div style={{position:"relative"}}>
           <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:14,color:C.muted}}>🔍</span>
@@ -623,38 +502,24 @@ function downloadFile(content, filename, type) {
 // ═══════════════════════════════════════════════════════════
 function DashboardPage({ setPage }) {
   const [liveStats, setLiveStats] = useState({...STATS});
-  const [exportMsg, setExportMsg] = useState("");
-  const [apiBooks,  setApiBooks]  = useState(BOOKS);
-  const [apiPatrons,setApiPatrons]= useState(PATRONS);
-
-  // Fetch real stats from backend; fall back to mock if offline
   useEffect(()=>{
-    api.reports.dashboard()
-      .then(d => {
-        if (!d) return;
-        setLiveStats(s=>({
-          ...s,
-          totalItems:       d.total_items      ?? s.totalItems,
-          totalBibs:        d.total_bibs        ?? s.totalBibs,
-          activePatrons:    d.active_patrons    ?? s.activePatrons,
-          todayCheckouts:   d.today_checkouts   ?? s.todayCheckouts,
-          todayReturns:     d.today_returns     ?? s.todayReturns,
-          overdueItems:     d.overdue_count     ?? s.overdueItems,
-          totalLoans:       d.active_loans      ?? s.totalLoans,
-          newItemsMonth:    d.new_items_month   ?? s.newItemsMonth,
-        }));
-      })
-      .catch(()=>{}); // offline → keep mock data
-    // Also preload catalogue + patrons for export functions
-    api.catalogue.list().then(d => { if (d?.bibs?.length) setApiBooks(d.bibs); }).catch(()=>{});
-    api.patrons.list().then(d => { if (d?.patrons?.length) setApiPatrons(d.patrons); }).catch(()=>{});
+    api.reports.dashboard().then(d=>{if(!d)return;setLiveStats(s=>({...s,totalItems:d.total_items??s.totalItems,totalBibs:d.total_bibs??s.totalBibs,activePatrons:d.active_patrons??s.activePatrons,todayCheckouts:d.today_checkouts??s.todayCheckouts,todayReturns:d.today_returns??s.todayReturns,overdueItems:d.overdue_count??s.overdueItems,totalLoans:d.active_loans??s.totalLoans,newItemsMonth:d.new_items_month??s.newItemsMonth}));}).catch(()=>{});
+  },[]);
+  const [exportMsg, setExportMsg] = useState("");
+
+  // Simulate live ticking for today's activity
+  useEffect(()=>{
+    const t = setInterval(()=>{
+      setLiveStats(s=>({...s,todayCheckouts:s.todayCheckouts+(Math.random()>.92?1:0),todayReturns:s.todayReturns+(Math.random()>.95?1:0)}));
+    },8000);
+    return ()=>clearInterval(t);
   },[]);
 
   const doExport = (type) => {
-    if(type==="dc") { downloadFile(exportDublinCoreXML(apiBooks),"lisar-catalogue-dc.xml","application/xml"); setExportMsg("✅ Dublin Core XML exported"); }
-    else if(type==="marc") { downloadFile(exportMARCMnemonic(apiBooks),"lisar-catalogue.mrk","text/plain"); setExportMsg("✅ MARC 21 (.mrk) exported"); }
-    else if(type==="csv") { downloadFile(exportCSV(apiBooks),"lisar-catalogue.csv","text/csv"); setExportMsg("✅ Catalogue CSV exported"); }
-    else if(type==="patrons") { downloadFile(exportPatronsCSV(apiPatrons),"lisar-patrons.csv","text/csv"); setExportMsg("✅ Patron list CSV exported"); }
+    if(type==="dc") { downloadFile(exportDublinCoreXML(BOOKS),"lisar-catalogue-dc.xml","application/xml"); setExportMsg("✅ Dublin Core XML exported"); }
+    else if(type==="marc") { downloadFile(exportMARCMnemonic(BOOKS),"lisar-catalogue.mrk","text/plain"); setExportMsg("✅ MARC 21 (.mrk) exported"); }
+    else if(type==="csv") { downloadFile(exportCSV(BOOKS),"lisar-catalogue.csv","text/csv"); setExportMsg("✅ Catalogue CSV exported"); }
+    else if(type==="patrons") { downloadFile(exportPatronsCSV(PATRONS),"lisar-patrons.csv","text/csv"); setExportMsg("✅ Patron list CSV exported"); }
     setTimeout(()=>setExportMsg(""),3500);
   };
 
@@ -672,8 +537,8 @@ function DashboardPage({ setPage }) {
   return (
     <div style={{padding:"28px 24px",maxWidth:1200}}>
       <PageHeader
-        title={`Welcome back, ${activeUser.name.split(" ")[0]} 👋`}
-        subtitle={`${activeLibrary.name} · ${new Date().toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}`}
+        title={`Welcome back, ${DEMO.user.name.split(" ")[0]} 👋`}
+        subtitle={`${DEMO.library.name} · ${new Date().toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}`}
         action={<div style={{display:"flex",gap:8}}><Btn onClick={()=>setPage("circulation")} icon="🔄">Circulation Desk</Btn><Btn variant="secondary" onClick={()=>setPage("catalogue")} icon="📚">Add Item</Btn></div>}/>
 
       {/* Live Stats */}
@@ -900,26 +765,21 @@ function OPACPage() {
       )}
 
       {/* Detail Modal */}
-      {editBib&&(
-        <Modal title="Edit Catalogue Record" onClose={()=>setEditBib(null)} width={580}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <div style={{gridColumn:"1/-1"}}><Input label="Title" value={editBib.title||""} onChange={v=>setEditBib(p=>({...p,title:v}))} required/></div>
-            <Input label="Author" value={editBib.author||""} onChange={v=>setEditBib(p=>({...p,author:v}))}/>
-            <Input label="Year" value={editBib.year||""} onChange={v=>setEditBib(p=>({...p,year:v}))}/>
-            <Input label="Publisher" value={editBib.publisher||""} onChange={v=>setEditBib(p=>({...p,publisher:v}))}/>
-            <Input label="ISBN" value={editBib.isbn||""} onChange={v=>setEditBib(p=>({...p,isbn:v}))}/>
-            <Input label="DDC Number" value={editBib.ddc||""} onChange={v=>setEditBib(p=>({...p,ddc:v}))}/>
-            <Input label="LCC Call Number" value={editBib.lcc||""} onChange={v=>setEditBib(p=>({...p,lcc:v}))}/>
-            <div style={{gridColumn:"1/-1"}}><Input label="Subject Headings (LCSH)" value={editBib.subject||""} onChange={v=>setEditBib(p=>({...p,subject:v}))}/></div>
+      {editingBib&&(
+        <Modal title="Edit Catalogue Record" onClose={()=>setEditingBib(null)} width={600}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}} className="form-grid-2">
+            <div style={{gridColumn:"1/-1"}}><Input label="Title" value={editingBib.title||""} onChange={v=>setEditingBib(p=>({...p,title:v}))}/></div>
+            <div style={{paddingRight:8}}><Input label="Author" value={editingBib.author||""} onChange={v=>setEditingBib(p=>({...p,author:v}))}/></div>
+            <div style={{paddingLeft:8}}><Input label="Year" value={editingBib.year||""} onChange={v=>setEditingBib(p=>({...p,year:v}))}/></div>
+            <div style={{paddingRight:8}}><Input label="Publisher" value={editingBib.publisher||""} onChange={v=>setEditingBib(p=>({...p,publisher:v}))}/></div>
+            <div style={{paddingLeft:8}}><Input label="ISBN" value={editingBib.isbn||""} onChange={v=>setEditingBib(p=>({...p,isbn:v}))}/></div>
+            <div style={{paddingRight:8}}><Input label="DDC Number" value={editingBib.ddc||""} onChange={v=>setEditingBib(p=>({...p,ddc:v}))}/></div>
+            <div style={{paddingLeft:8}}><Input label="LCC Call Number" value={editingBib.lcc||""} onChange={v=>setEditingBib(p=>({...p,lcc:v}))}/></div>
+            <div style={{gridColumn:"1/-1"}}><Input label="Subject Headings (LCSH)" value={editingBib.subject||""} onChange={v=>setEditingBib(p=>({...p,subject:v}))}/></div>
+            <div style={{gridColumn:"1/-1"}}><Input label="Description" value={editingBib.description||""} onChange={v=>setEditingBib(p=>({...p,description:v}))}/></div>
           </div>
-          <div style={{display:"flex",gap:8,marginTop:4}}>
-            <Btn full onClick={async()=>{
-              try{ await api.catalogue.update(editBib.id,editBib); }catch{}
-              setApiBooks(b=>b.map(x=>x.id===editBib.id?{...x,...editBib}:x));
-              setEditBib(null);
-            }}>Save Changes</Btn>
-            <Btn full variant="secondary" onClick={()=>setEditBib(null)}>Cancel</Btn>
-          </div>
+          {editMsg&&<div style={{padding:"8px 12px",borderRadius:7,background:editMsg.startsWith("✅")?"#DCFCE7":"#FEE2E2",color:editMsg.startsWith("✅")?"#15803D":"#B91C1C",fontSize:".82em",marginBottom:10}}>{editMsg}</div>}
+          <div style={{display:"flex",gap:8}}><Btn onClick={saveEdit} disabled={editSaving}>{editSaving?"Saving…":"Save Changes"}</Btn><Btn variant="secondary" onClick={()=>setEditingBib(null)}>Cancel</Btn></div>
         </Modal>
       )}
       {selected&&(
@@ -1132,17 +992,26 @@ function extractBibFromMARC(fields) {
 }
 
 function CataloguingPage() {
-  const [view, setView]         = useState("list");
-  const [inputMode, setInputMode] = useState("loc");
-  const [apiBooks, setApiBooks]   = useState(BOOKS);
-  const [booksLoading, setBooksLoading] = useState(false);
-  const [editBib, setEditBib] = useState(null);
+  const [view,        setView]        = useState("list");
+  const [apiBooks,    setApiBooks]    = useState(BOOKS);
+  const [editingBib,  setEditingBib]  = useState(null);
+  const [editSaving,  setEditSaving]  = useState(false);
+  const [editMsg,     setEditMsg]     = useState("");
 
-  useEffect(()=>{
-    if (view !== "list") return;
-    setBooksLoading(true);
-    api.catalogue.list().then(d=>{ if(d?.bibs?.length) setApiBooks(d.bibs); }).catch(()=>{}).finally(()=>setBooksLoading(false));
-  },[view]); // loc | isbn | marc | manual
+  useEffect(()=>{ if(view!=="list")return; api.catalogue.list().then(d=>{if(d?.bibs?.length)setApiBooks(d.bibs);}).catch(()=>{}); },[view]);
+
+  const saveEdit = async () => {
+    if(!editingBib)return;
+    setEditSaving(true);setEditMsg("");
+    try{
+      await api.catalogue.update(editingBib.id, editingBib);
+      setEditMsg("✅ Record saved!");
+      api.catalogue.list().then(d=>{if(d?.bibs?.length)setApiBooks(d.bibs);}).catch(()=>{});
+      setTimeout(()=>{setEditingBib(null);setEditMsg("");},1200);
+    }catch(e){setEditMsg("❌ "+(e.message||"Save failed"));}
+    finally{setEditSaving(false);}
+  };
+  const [inputMode, setInputMode] = useState("loc"); // loc | isbn | marc | manual
   const [q, setQ]               = useState("");
   const [selected, setSelected] = useState(null);
   // LOC mode
@@ -1329,24 +1198,49 @@ Use the LCC, DDC, and LCSH subjects EXACTLY as provided — these are from the M
   const generateFromLOC = async () => {
     if (!locPicked) return;
     setGenerating(true); setRecord(null);
-    const systemPrompt = `You are LISAR, an expert cataloguing librarian. Generate a full, professional catalogue record using the provided LOC data. The LCSH subjects and LCC call number are AUTHORITATIVE — use them exactly as given. Fill any gaps using your cataloguing expertise.
+    const systemPrompt = `You are LISAR, an expert AI cataloguing librarian with complete mastery of DDC, LCC, MARC 21, LCSH, and Dublin Core.
 
-Format with ## section headers:
+ALWAYS generate a complete catalogue record with ALL of the following sections:
+
 ## Dublin Core Record
-Show all 15 DC elements with dc: prefix. Use the LOC LCSH subjects verbatim for dc:subject.
+All 15 DC elements (dc:title, dc:creator, dc:subject, dc:description, dc:publisher, dc:contributor, dc:date, dc:type, dc:format, dc:identifier, dc:source, dc:language, dc:relation, dc:coverage, dc:rights)
 
 ## Classification
-Show the LCC call number exactly as retrieved from LOC, explain its construction. Also derive the DDC number.
+**DDC (Dewey Decimal Classification 23rd Ed.):**
+- Full class number with table extensions
+- Step-by-step notation reasoning
+- Cutter number construction
+- Complete shelf label: [number] [cutter]
 
-## LCSH Subject Headings (MARC-tagged)
-Format as: 650 _0 $a Topic $x Subdivision $y Period $v Form.
-Use the LCSH subjects from LOC verbatim — these are directly from LOC's authority files.
+**LCC (Library of Congress Classification):**
+- Subclass letters and scope
+- Integer range and specific number
+- Geographic/topical cutter (first cutter)
+- Author/title cutter (second cutter)
+- Date
+- Complete call number: [Subclass][Integer].[Cutter1] [Cutter2] [Year]
+- Step-by-step construction explanation
+
+For Nigerian/African materials use correct cutters:
+- Nigeria geographic: .N6 (H schedules), .N5 (R schedule), DT515.5 (history)
+- Nigerian law: KTQ
+- Yoruba language: PL8671
+- Nigerian literature in English: PR9387.9
+
+## LCSH Subject Headings (MARC 21 Tagged)
+Generate 4-6 authorised LCSH headings. Format each exactly as:
+650 _0 $a [Main heading] $x [Topical subdivision] $y [Chronological] $z [Geographic] $v [Form subdivision].
+651 _0 $a [Geographic heading] $x [Subdivision].
+655 _7 $a [Genre/form term]. $2 lcgft
+
+## MARC 21 Record (Key Fields)
+LDR, 008, 020/022, 040, 050 ($a $b), 082 ($a $2 23), 1XX, 245, 250, 264, 300, 336/337/338, 520, 650, 651, 655
 
 ## RDA Description
-Core RDA elements.
+Title proper, Statement of responsibility, Edition, Publication, Extent, Identifier
 
-## Cataloguer's Note
-Brief note that this record was generated from LOC Catalog data.`;
+## Cataloguer's Notes
+Classification decisions, alternative numbers considered, notes on Nigerian/African context if applicable.\`;
 
     const userMsg = `Generate catalogue record from this LOC Catalog data:
 
@@ -1776,7 +1670,7 @@ Record generated via Open Library ISBN lookup. Verify LCSH headings against id.l
             <span style={{fontFamily:"monospace",fontSize:".8em"}}>{b.lcc}</span>,
             <span style={{fontFamily:"monospace",fontSize:".72em",color:C.muted}}>{b.isbn}</span>,
             `${b.available}/${b.copies}`, statusBadge(b.status),
-            <div style={{display:"flex",gap:4}}><Btn size="sm" variant="secondary" onClick={()=>setSelected(b)}>View</Btn><Btn size="sm" variant="ghost">Edit</Btn></div>
+            <div style={{display:"flex",gap:4}}><Btn size="sm" variant="secondary" onClick={()=>setSelected(b)}>View</Btn><Btn size="sm" variant="ghost" onClick={()=>setEditingBib({...b})}>Edit</Btn></div>
           ]}))}/>
       </Card>
       {selected&&(
@@ -1787,17 +1681,7 @@ Record generated via Open Library ISBN lookup. Verify LCSH headings against id.l
             ))}
           </div>
           <div style={{background:C.bg,borderRadius:7,padding:"10px 12px",marginBottom:14,fontSize:".82em"}}><div style={{color:C.muted,fontSize:".72em",textTransform:"uppercase",marginBottom:4}}>Subjects</div><div>{selected.subject}</div></div>
-          <div style={{display:"flex",gap:8}}>
-              <Btn onClick={()=>{setEditBib(selected);setSelected(null);}}>Edit Record</Btn>
-              <Btn variant="secondary">View Items</Btn>
-              <Btn variant="secondary" onClick={()=>{ const dc = `dc:title=${selected.title}
-dc:creator=${selected.author}
-dc:publisher=${selected.publisher}
-dc:date=${selected.year}
-dc:subject=${selected.subject}
-dc:language=${selected.lang||"eng"}
-dc:format=${selected.format}`; navigator.clipboard?.writeText(dc).catch(()=>{}); }}>Export DC</Btn>
-            </div>
+          <div style={{display:"flex",gap:8}}><Btn>Edit Record</Btn><Btn variant="secondary">View Items</Btn><Btn variant="secondary">Export DC</Btn></div>
         </Modal>
       )}
     </div>
@@ -1806,23 +1690,6 @@ dc:format=${selected.format}`; navigator.clipboard?.writeText(dc).catch(()=>{});
 
 
 function ItemsPage() {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newItem, setNewItem] = useState({ barcode:"", call_number:"", location:"General Stacks", bib_title:"" });
-  const [addMsg, setAddMsg] = useState(null);
-  const [addItems, setAddItems] = useState([]);
-
-  const addCopy = async () => {
-    if (!newItem.barcode) { setAddMsg({type:"error",text:"Barcode is required"}); return; }
-    try {
-      await api.catalogue.addItem(1, newItem);
-      setAddMsg({type:"success",text:"✅ Item added successfully"});
-    } catch {
-      setAddItems(p=>[...p,{...newItem,id:Date.now(),status:"available"}]);
-      setAddMsg({type:"success",text:"✅ Item added"});
-    }
-    setTimeout(()=>{ setShowAddModal(false); setAddMsg(null); setNewItem({barcode:"",call_number:"",location:"General Stacks",bib_title:""}); },1500);
-  };
-
   const items = BOOKS.flatMap(b=>Array.from({length:b.copies},(_, i)=>({id:`ITM${String(b.id).padStart(3,"0")}${i+1}`,barcode:`ITM${String(b.id).padStart(3,"0")}${String(i+1).padStart(2,"0")}`,title:b.title,author:b.author,callNo:`${b.ddc} ${b.author.split(",")[0].slice(0,3).toUpperCase()}`,location:["General Stacks","Reserve","Reference","Periodicals"][i%4],status:i===0&&b.status==="checked_out"?"checked_out":b.status==="reference"?"reference":"available"})));
   const [q, setQ] = useState("");
   const filtered = items.filter(it=>q===""||it.title.toLowerCase().includes(q.toLowerCase())||it.barcode.includes(q));
@@ -1830,7 +1697,7 @@ function ItemsPage() {
   return (
     <div style={{padding:"28px 24px",maxWidth:1200}}>
       <PageHeader title="📦 Item Management" subtitle="Manage physical copies, barcodes and shelf locations"
-        action={<div style={{display:"flex",gap:8}}><Btn variant="secondary" icon="🏷️">Print Labels</Btn><Btn icon="➕" onClick={()=>setShowAddModal(true)}>Add Copy</Btn></div>}/>
+        action={<div style={{display:"flex",gap:8}}><Btn variant="secondary" icon="🏷️">Print Labels</Btn><Btn icon="➕">Add Copy</Btn></div>}/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
         {[{label:"Total Copies",val:items.length,color:C.primary},{label:"Available",val:items.filter(i=>i.status==="available").length,color:C.success},{label:"Checked Out",val:items.filter(i=>i.status==="checked_out").length,color:C.warning},{label:"Reference Only",val:items.filter(i=>i.status==="reference").length,color:"#7C3AED"}].map((s,i)=>(
           <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
@@ -1905,19 +1772,6 @@ function PatronIDCard({ patron, library }) {
           <span>Expires: {patron.expiry}</span>
         </div>
       </div>
-      {showAddModal&&(
-        <Modal title="Add New Item / Copy" onClose={()=>setShowAddModal(false)} width={480}>
-          <Input label="Barcode" value={newItem.barcode} onChange={v=>setNewItem(p=>({...p,barcode:v}))} placeholder="e.g. ITM01005" required/>
-          <Input label="Book Title / Bib Link" value={newItem.bib_title} onChange={v=>setNewItem(p=>({...p,bib_title:v}))} placeholder="Search title to link…"/>
-          <Input label="Call Number" value={newItem.call_number} onChange={v=>setNewItem(p=>({...p,call_number:v}))} placeholder="e.g. 823.914 ACH"/>
-          <Select label="Location" value={newItem.location} onChange={v=>setNewItem(p=>({...p,location:v}))} options={["General Stacks","Reserve","Reference","Periodicals","Special Collections"].map(v=>({value:v,label:v}))}/>
-          {addMsg&&<div style={{padding:"8px 12px",borderRadius:7,background:addMsg.type==="success"?"#DCFCE7":"#FEE2E2",color:addMsg.type==="success"?"#15803D":"#B91C1C",fontSize:".8em",marginBottom:8}}>{addMsg.text}</div>}
-          <div style={{display:"flex",gap:8,marginTop:4}}>
-            <Btn full onClick={addCopy}>Add Item</Btn>
-            <Btn full variant="secondary" onClick={()=>setShowAddModal(false)}>Cancel</Btn>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }
@@ -2092,7 +1946,7 @@ function CirculationPage() {
   };
 
   // CHECKOUT
-  const processCheckout = async () => {
+  const processCheckout = () => {
     if (!itemBarcode.trim()) { flash("error","Please enter an item barcode."); return; }
     if (!patronBarcode.trim()) { flash("error","Please enter a patron ID."); return; }
     const patron = resolvedPatron || PATRONS[0];
@@ -2108,7 +1962,7 @@ function CirculationPage() {
   };
 
   // CHECKIN
-  const processCheckin = async () => {
+  const processCheckin = () => {
     if (!itemBarcode.trim()) { flash("error","Please enter an item barcode."); return; }
     const loan = loans.find(l=>l.barcode===itemBarcode&&(l.status==="active"||l.status==="overdue"));
     if (!loan) { flash("error",`❌ No active loan found for barcode "${itemBarcode}".`); return; }
@@ -2555,136 +2409,6 @@ const SERIALS_DATA = [
   {id:5,title:"Bulletin of the American Mathematical Society",issn:"0273-0979",publisher:"AMS",frequency:"Quarterly",format:"Online",status:"active",currentVol:"Vol. 62",nextExpected:"2025-07-01",cost:62000,paid:true,issues:[{vol:"62",no:"2",date:"2025-04-01",received:true}]},
 ];
 
-
-// ═══════════════════════════════════════════════════════════
-//  NIGERIAN NEWSPAPERS PANEL
-// ═══════════════════════════════════════════════════════════
-const NIGERIAN_PAPERS = [
-  { name:"Punch Nigeria",       url:"https://punchng.com",           logo:"🥊", category:"General",  color:"#DC2626" },
-  { name:"Vanguard",            url:"https://www.vanguardngr.com",   logo:"🗞️", category:"General",  color:"#1D4ED8" },
-  { name:"The Guardian Nigeria",url:"https://guardian.ng",           logo:"🛡️", category:"General",  color:"#15803D" },
-  { name:"This Day",            url:"https://www.thisdaylive.com",   logo:"📰", category:"Business", color:"#B45309" },
-  { name:"Daily Trust",         url:"https://dailytrust.com",        logo:"✅", category:"General",  color:"#7C3AED" },
-  { name:"The Nation",          url:"https://thenationonlineng.net", logo:"🇳🇬", category:"General",  color:"#0F766E" },
-  { name:"Premium Times",       url:"https://www.premiumtimesng.com",logo:"⭐", category:"Investigative",color:"#B91C1C" },
-  { name:"Business Day",        url:"https://businessday.ng",        logo:"💼", category:"Business", color:"#1E40AF" },
-  { name:"Tribune Nigeria",     url:"https://tribuneonlineng.com",   logo:"📢", category:"General",  color:"#92400E" },
-  { name:"Sun News",            url:"https://www.sunnewsonline.com", logo:"☀️", category:"General",  color:"#D97706" },
-  { name:"Sahara Reporters",    url:"https://saharareporters.com",   logo:"🔍", category:"Investigative",color:"#6D28D9" },
-  { name:"The Cable",           url:"https://www.thecable.ng",       logo:"📡", category:"News",     color:"#0E7490" },
-];
-
-function NigerianNewspapersPanel() {
-  const [headlines, setHeadlines] = useState({});
-  const [loading, setLoading]     = useState({});
-  const [fetched, setFetched]     = useState({});
-  const [filter, setFilter]       = useState("All");
-
-  const categories = ["All","General","Business","Investigative","News"];
-
-  const fetchHeadlines = async (paper) => {
-    if (fetched[paper.name]) return;
-    setLoading(l=>({...l,[paper.name]:true}));
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages",{
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:1000,
-          tools:[{type:"web_search_20250305",name:"web_search"}],
-          system:"You are a news aggregator. Search for today's top headlines from the given Nigerian newspaper. Return ONLY a JSON array of exactly 5 objects with keys: headline (string), url (string), category (string). No preamble. No markdown. Valid JSON only.",
-          messages:[{role:"user",content:`Get today's top 5 headlines from ${paper.name} (${paper.url}). Return JSON array only.`}]
-        })
-      });
-      const data = await res.json();
-      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
-      const clean = text.replace(/```json|```/g,"").trim();
-      const parsed = JSON.parse(clean);
-      setHeadlines(h=>({...h,[paper.name]:parsed}));
-      setFetched(f=>({...f,[paper.name]:true}));
-    } catch {
-      setHeadlines(h=>({...h,[paper.name]:[{headline:"Could not load headlines. Click newspaper name to visit directly.",url:paper.url,category:""}]}));
-    }
-    setLoading(l=>({...l,[paper.name]:false}));
-  };
-
-  const filtered = filter==="All" ? NIGERIAN_PAPERS : NIGERIAN_PAPERS.filter(p=>p.category===filter);
-  const today = new Date().toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-
-  return (
-    <div>
-      {/* Header */}
-      <div style={{background:`linear-gradient(135deg,${C.primary},#1D4ED8)`,borderRadius:12,padding:"18px 20px",marginBottom:18,color:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontWeight:800,fontSize:"1.05em"}}>📰 Nigerian Newspapers — Live Headlines</div>
-          <div style={{fontSize:".78em",opacity:.85,marginTop:3}}>{today}</div>
-        </div>
-        <div style={{fontSize:".72em",background:"rgba(255,255,255,.15)",borderRadius:8,padding:"4px 10px"}}>
-          AI-powered · Updates daily
-        </div>
-      </div>
-
-      {/* Category filter */}
-      <div style={{display:"flex",gap:7,marginBottom:16,flexWrap:"wrap"}}>
-        {categories.map(c=>(
-          <button key={c} onClick={()=>setFilter(c)} style={{padding:"5px 14px",borderRadius:20,border:`1px solid ${filter===c?C.primary:C.border}`,background:filter===c?`${C.primary}0D`:"transparent",color:filter===c?C.primary:C.muted,fontSize:".75em",cursor:"pointer",fontWeight:filter===c?700:400}}>
-            {c}
-          </button>
-        ))}
-      </div>
-
-      {/* Newspaper grid */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:14}}>
-        {filtered.map((paper,i)=>(
-          <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",transition:"box-shadow .18s"}}
-            onMouseOver={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,.09)"}
-            onMouseOut={e=>e.currentTarget.style.boxShadow=""}>
-            {/* Paper header */}
-            <div style={{background:`${paper.color}12`,borderBottom:`1px solid ${paper.color}25`,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontSize:20}}>{paper.logo}</span>
-                <div>
-                  <a href={paper.url} target="_blank" rel="noreferrer" style={{fontWeight:700,fontSize:".85em",color:paper.color,textDecoration:"none"}}>{paper.name}</a>
-                  <div style={{fontSize:".65em",color:C.muted,marginTop:1}}>{paper.category}</div>
-                </div>
-              </div>
-              <button onClick={()=>fetchHeadlines(paper)} disabled={loading[paper.name]}
-                style={{padding:"5px 11px",borderRadius:7,border:`1px solid ${paper.color}40`,background:`${paper.color}10`,color:paper.color,cursor:loading[paper.name]?"not-allowed":"pointer",fontSize:".72em",fontWeight:600}}>
-                {loading[paper.name]?"Loading…":fetched[paper.name]?"Refresh":"Get Headlines"}
-              </button>
-            </div>
-            {/* Headlines */}
-            <div style={{padding:"10px 14px"}}>
-              {!headlines[paper.name] && !loading[paper.name] && (
-                <div style={{fontSize:".78em",color:C.muted,textAlign:"center",padding:"12px 0",fontStyle:"italic"}}>
-                  Click "Get Headlines" to load today's news
-                </div>
-              )}
-              {loading[paper.name] && (
-                <div style={{display:"flex",gap:4,justifyContent:"center",padding:"14px 0"}}>
-                  {[0,1,2].map(j=><div key={j} style={{width:6,height:6,borderRadius:"50%",background:paper.color,animation:`blink 1.2s infinite ${j*.2}s`}}/>)}
-                </div>
-              )}
-              {headlines[paper.name] && (
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {headlines[paper.name].map((h,j)=>(
-                    <a key={j} href={h.url||paper.url} target="_blank" rel="noreferrer"
-                      style={{display:"flex",gap:8,textDecoration:"none",padding:"5px 0",borderBottom:j<headlines[paper.name].length-1?`1px solid ${C.border}`:""}}
-                      onMouseOver={e=>e.currentTarget.style.color=paper.color}
-                      onMouseOut={e=>e.currentTarget.style.color=""}>
-                      <span style={{color:paper.color,fontWeight:700,fontSize:".82em",flexShrink:0,marginTop:1}}>{j+1}.</span>
-                      <span style={{fontSize:".8em",color:C.text,lineHeight:1.5}}>{h.headline}</span>
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function SerialsPage() {
   const [serials, setSerials] = useState(SERIALS_DATA);
   const [selected, setSelected] = useState(null);
@@ -2728,7 +2452,7 @@ function SerialsPage() {
 
       {/* Tabs */}
       <div style={{display:"flex",gap:0,marginBottom:16,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden",width:"fit-content"}}>
-        {[{id:"subscriptions",label:"📋 Subscriptions"},{id:"checkin",label:"📥 Issue Check-in"},{id:"kardex",label:"🗂️ Kardex"},{id:"newspapers",label:"📰 Newspapers"}].map(t=>(
+        {[{id:"subscriptions",label:"📋 Subscriptions"},{id:"checkin",label:"📥 Issue Check-in"},{id:"kardex",label:"🗂️ Kardex"}].map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"10px 20px",border:"none",borderBottom:`2px solid ${tab===t.id?C.primary:"transparent"}`,background:tab===t.id?`${C.primary}08`:"transparent",color:tab===t.id?C.primary:C.muted,fontWeight:tab===t.id?700:400,fontSize:".82em",cursor:"pointer",whiteSpace:"nowrap"}}>
             {t.label}
           </button>
@@ -3008,6 +2732,146 @@ function ILLPage() {
 }
 
 // Keep a minimal ComingSoonPage just in case it's referenced elsewhere
+function SerialsPage() {
+  const [tab, setTab] = useState("subscriptions");
+  const [headlines, setHeadlines] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [newsError, setNewsError] = useState("");
+
+  const NIGERIAN_PAPERS = [
+    {name:"The Punch",url:"https://punchng.com",color:"#DC2626"},
+    {name:"Vanguard",url:"https://vanguardngr.com",color:"#2563EB"},
+    {name:"The Guardian Nigeria",url:"https://guardian.ng",color:"#16A34A"},
+    {name:"Daily Trust",url:"https://dailytrust.com",color:"#D97706"},
+    {name:"This Day",url:"https://thisdaylive.com",color:"#7C3AED"},
+    {name:"Premium Times",url:"https://premiumtimesng.com",color:"#0891B2"},
+    {name:"The Nation",url:"https://thenationonlineng.net",color:"#DB2777"},
+    {name:"Business Day",url:"https://businessday.ng",color:"#059669"},
+    {name:"Leadership",url:"https://leadership.ng",color:"#EA580C"},
+    {name:"Sun News",url:"https://sunnewsonline.com",color:"#CA8A04"},
+    {name:"Tribune",url:"https://tribuneonlineng.com",color:"#7C3AED"},
+    {name:"New Telegraph",url:"https://newtelegraphng.com",color:"#0F172A"},
+  ];
+
+  const fetchHeadlines = async () => {
+    setNewsLoading(true); setNewsError(""); setHeadlines([]);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:1000,
+          tools:[{type:"web_search_20250305",name:"web_search"}],
+          system:"You are a news aggregator for a Nigerian library system. Search for today's top headlines from Nigerian newspapers. Return ONLY a JSON array (no markdown) of exactly 12 objects, each with: {paper, headline, url, category} where paper is one of: Punch, Vanguard, Guardian Nigeria, Daily Trust, This Day, Premium Times, The Nation, Business Day, Leadership, Sun News, Tribune, New Telegraph. Pick one headline per newspaper. Categories: Politics, Business, Education, Health, Sports, Technology, Crime, International.",
+          messages:[{role:"user",content:`Search for today's top headlines from these 12 major Nigerian newspapers: Punch, Vanguard, Guardian Nigeria, Daily Trust, This Day, Premium Times, The Nation, Business Day, Leadership, Sun News, Tribune, New Telegraph. Return as JSON array only.`}]
+        })
+      });
+      const data = await res.json();
+      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      const clean = text.replace(/```json|```/g,"").trim();
+      const parsed = JSON.parse(clean);
+      setHeadlines(Array.isArray(parsed)?parsed:parsed.headlines||[]);
+    } catch(e) {
+      setNewsError("Could not fetch headlines. Check your connection.");
+    }
+    setNewsLoading(false);
+  };
+
+  const SERIALS_DATA = [
+    {id:1,title:"Journal of Library & Information Science",issn:"0022-2232",publisher:"IFLA",freq:"Quarterly",status:"active",cost:85000},
+    {id:2,title:"African Journal of Library, Archives & Information Science",issn:"0795-4778",publisher:"Archlib",freq:"Biannual",status:"active",cost:45000},
+    {id:3,title:"Journal of Nigerian Law",issn:"0331-3964",publisher:"Faculty of Law",freq:"Annual",status:"active",cost:28000},
+    {id:4,title:"Nigerian Medical Journal",issn:"0300-1652",publisher:"NMA",freq:"Bimonthly",status:"active",cost:52000},
+  ];
+
+  const catColor = c => ({Politics:"#DC2626",Business:"#16A34A",Education:"#2563EB",Health:"#0891B2",Sports:"#D97706",Technology:"#7C3AED",Crime:"#9F1239",International:"#0F172A"}[c]||"#64748B");
+
+  return (
+    <div style={{padding:"28px 24px",maxWidth:1200}} className="page-content">
+      <PageHeader title="📰 Serials Management" subtitle="Journal subscriptions, issue tracking and Nigerian newspapers"/>
+      {/* Tabs */}
+      <div style={{display:"flex",gap:0,marginBottom:20,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden",width:"fit-content"}}>
+        {[{id:"subscriptions",label:"📚 Subscriptions"},{id:"newspapers",label:"🗞️ Nigerian Newspapers"}].map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)}
+            style={{padding:"10px 20px",border:"none",borderBottom:`2px solid ${tab===t.id?C.primary:"transparent"}`,background:tab===t.id?`${C.primary}0A`:"transparent",color:tab===t.id?C.primary:C.muted,fontWeight:tab===t.id?700:400,fontSize:".85em",cursor:"pointer",whiteSpace:"nowrap"}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab==="subscriptions" && (
+        <Card>
+          <div style={{padding:"14px 18px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontWeight:700,fontSize:".88em",color:C.text}}>Active Subscriptions</div>
+            <Btn icon="➕">New Subscription</Btn>
+          </div>
+          <Table cols={["Title","ISSN","Publisher","Frequency","Status","Annual Cost (₦)","Action"]}
+            rows={SERIALS_DATA.map(s=>({cells:[
+              <div style={{fontWeight:600,fontSize:".85em"}}>{s.title}</div>,
+              <span style={{fontFamily:"monospace",fontSize:".82em"}}>{s.issn}</span>,
+              s.publisher, s.freq,
+              <Badge color="green">{s.status}</Badge>,
+              `₦${s.cost.toLocaleString()}`,
+              <Btn size="sm" variant="secondary">Manage</Btn>
+            ]}))}/>
+        </Card>
+      )}
+
+      {tab==="newspapers" && (
+        <div>
+          {/* Newspaper Directory */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10,marginBottom:20}}>
+            {NIGERIAN_PAPERS.map((p,i)=>(
+              <a key={i} href={p.url} target="_blank" rel="noreferrer"
+                style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",background:C.card,border:`1px solid ${C.border}`,borderRadius:9,textDecoration:"none",transition:"all .15s",borderLeft:`4px solid ${p.color}`}}
+                onMouseOver={e=>e.currentTarget.style.boxShadow="0 2px 10px rgba(0,0,0,.1)"} onMouseOut={e=>e.currentTarget.style.boxShadow=""}>
+                <span style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0}}/>
+                <span style={{fontSize:".75em",fontWeight:600,color:C.text,lineHeight:1.3}}>{p.name}</span>
+              </a>
+            ))}
+          </div>
+
+          {/* Headlines */}
+          <div style={{marginBottom:14,display:"flex",gap:10,alignItems:"center"}}>
+            <Btn onClick={fetchHeadlines} disabled={newsLoading} icon={newsLoading?"":"🗞️"}>
+              {newsLoading?<><div style={{width:13,height:13,borderRadius:"50%",border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",animation:"spin .8s linear infinite"}}/>Fetching headlines…</>:"Fetch Today's Headlines"}
+            </Btn>
+            {headlines.length>0&&<span style={{fontSize:".78em",color:C.muted}}>{headlines.length} headlines · {new Date().toLocaleDateString("en-NG",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</span>}
+          </div>
+
+          {newsError&&<div style={{padding:"12px",background:"#FEE2E2",borderRadius:8,color:"#B91C1C",fontSize:".84em",marginBottom:14}}>{newsError}</div>}
+
+          {headlines.length>0&&(
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:12}}>
+              {headlines.map((h,i)=>{
+                const paper = NIGERIAN_PAPERS.find(p=>p.name.toLowerCase().includes((h.paper||"").toLowerCase().split(" ")[0].toLowerCase()));
+                const color = paper?.color||"#64748B";
+                return (
+                  <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px",borderTop:`3px solid ${color}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                      <span style={{fontSize:".7em",fontWeight:700,color,textTransform:"uppercase",letterSpacing:".05em"}}>{h.paper}</span>
+                      {h.category&&<span style={{fontSize:".62em",background:`${catColor(h.category)}15`,color:catColor(h.category),border:`1px solid ${catColor(h.category)}30`,borderRadius:10,padding:"1px 7px",fontWeight:600}}>{h.category}</span>}
+                    </div>
+                    <div style={{fontSize:".85em",fontWeight:600,color:C.text,lineHeight:1.5,marginBottom:8}}>{h.headline}</div>
+                    {h.url&&<a href={h.url} target="_blank" rel="noreferrer" style={{fontSize:".72em",color:color,textDecoration:"none",fontWeight:600}}>Read more →</a>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {!newsLoading&&headlines.length===0&&(
+            <div style={{textAlign:"center",padding:"48px",background:C.card,border:`1px solid ${C.border}`,borderRadius:12}}>
+              <div style={{fontSize:48,marginBottom:12}}>🗞️</div>
+              <div style={{fontWeight:700,color:C.text,marginBottom:6}}>Nigerian Newspaper Headlines</div>
+              <div style={{fontSize:".84em",color:C.muted,marginBottom:16}}>Click "Fetch Today's Headlines" to pull the latest news from 12 major Nigerian newspapers via AI web search</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ComingSoonPage({ icon, title, desc, features }) {
   return (
     <div style={{padding:"28px 24px",maxWidth:800}}>
@@ -3939,63 +3803,57 @@ function SettingsPage() {
 // ═══════════════════════════════════════════════════════════
 //  MAIN APP
 // ═══════════════════════════════════════════════════════════
+function MobileNav({ page, setPage }) {
+  const items = [
+    {id:"dashboard",icon:"🏠",label:"Home"},
+    {id:"opac",icon:"🔍",label:"OPAC"},
+    {id:"catalogue",icon:"📚",label:"Catalogue"},
+    {id:"circulation",icon:"🔄",label:"Circulation"},
+    {id:"patrons",icon:"👥",label:"Patrons"},
+  ];
+  return (
+    <div className="mobile-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:"#0F172A",borderTop:"1px solid rgba(255,255,255,.1)",zIndex:100,justifyContent:"space-around",padding:"6px 0 10px"}}>
+      {items.map(n=>(
+        <button key={n.id} onClick={()=>setPage(n.id)}
+          style={{background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 8px",cursor:"pointer",color:page===n.id?"#60A5FA":"#64748B",minWidth:52}}>
+          <span style={{fontSize:18}}>{n.icon}</span>
+          <span style={{fontSize:".58em",fontWeight:page===n.id?700:400}}>{n.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function LISARApp() {
-  const [screen,   setScreen]   = useState("landing");
-  const [page,     setPage]     = useState("dashboard");
-  const [collapsed,setCollapsed]= useState(false);
-  const [user,     setUser]     = useState(null);
-  const [library,  setLibrary]  = useState(null);
-  const [pageHistory, setPageHistory] = useState([]);
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const [screen,    setScreen]    = useState("landing");
+  const [page,      setPage]      = useState("dashboard");
+  const [collapsed, setCollapsed] = useState(false);
+  const [user,      setUser]      = useState(null);
+  const [library,   setLibrary]   = useState(null);
 
-  // Navigate with history tracking
-  const navigate = (newPage) => {
-    setPageHistory(h => [...h, page]);
-    setPage(newPage);
-  };
-
-  // Back button — go to previous page, not logout
-  useEffect(() => {
-    const handleBack = (e) => {
-      e.preventDefault();
-      if (pageHistory.length > 0) {
-        const prev = pageHistory[pageHistory.length - 1];
-        setPageHistory(h => h.slice(0, -1));
-        setPage(prev);
-      }
-    };
-    window.addEventListener("popstate", handleBack);
-    return () => window.removeEventListener("popstate", handleBack);
-  }, [pageHistory]);
-
-  // Push dummy state so popstate fires on back press
-  useEffect(() => {
-    if (screen === "app") window.history.pushState({}, "");
-  }, [page, screen]);
-
-  // Session restore — if token exists, re-auth silently
+  // Session restore
   useEffect(()=>{
-    if (!getToken()) return;
-    api.auth.me()
-      .then(d => {
-        setUser(d.user); setLibrary(d.library);
-        setScreen("app"); setPage("dashboard");
-      })
-      .catch(()=>{ setToken(""); }); // token expired
+    if(!getToken()) return;
+    api.auth.me().then(d=>{setUser(d.user);setLibrary(d.library);setScreen("app");setPage("dashboard");}).catch(()=>setToken(""));
   },[]);
 
+  // Back button — navigate within app instead of browser back
+  useEffect(()=>{
+    if(screen!=="app") return;
+    window.history.pushState({page},"",window.location.pathname);
+    const handler = (e)=>{
+      e.preventDefault();
+      window.history.pushState({page},"",window.location.pathname);
+    };
+    window.addEventListener("popstate", handler);
+    return ()=>window.removeEventListener("popstate", handler);
+  },[page, screen]);
+
   const login = (data) => {
-    setUser(data.user); setLibrary(data.library);
+    if(data){setUser(data.user);setLibrary(data.library);}
     setScreen("app"); setPage("dashboard");
   };
-
-  const logout = () => {
-    api.logout();
-    setUser(null); setLibrary(null);
-    setScreen("landing");
-  };
-
-  // Derived display values — fall back to DEMO if API not connected yet
+  const logout = () => { api.logout(); setUser(null); setLibrary(null); setScreen("landing"); };
   const activeUser    = user    || DEMO.user;
   const activeLibrary = library || DEMO.library;
 
@@ -4014,16 +3872,14 @@ export default function LISARApp() {
   );
 
   const renderPage = () => {
-    // Mobile patron OPAC — simplified view
-    if (isMobile && page==="opac") return <MobileOPACPage setPage={navigate}/>;
-    if (page==="dashboard")   return <DashboardPage setPage={navigate}/>;
+    if (page==="dashboard")   return <DashboardPage setPage={setPage}/>;
     if (page==="opac")        return <OPACPage/>;
-    if (page==="catalogue")   return <CataloguingPage setPage={navigate}/>;
+    if (page==="catalogue")   return <CataloguingPage/>;
     if (page==="items")       return <ItemsPage/>;
     if (page==="patrons")     return <PatronsPage/>;
     if (page==="circulation") return <CirculationPage/>;
     if (page==="acquisitions")return <AcquisitionsPage/>;
-    if (page==="journals")    return <JournalFinderPage setPage={navigate}/>;  
+    if (page==="journals")    return <JournalFinderPage setPage={setPage}/>;  
     if (page==="reports")     return <ReportsPage/>;
     if (page==="settings")    return <SettingsPage/>;
     if (page==="serials")     return <SerialsPage/>;
@@ -4033,12 +3889,12 @@ export default function LISARApp() {
 
   return (
     <div style={{display:"flex",height:"100vh",background:C.bg,fontFamily:"Inter,system-ui,sans-serif",overflow:"hidden"}}>
-      <style>{`*{box-sizing:border-box;margin:0;padding:0;} ::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:10px;} @keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      <Sidebar page={page} setPage={navigate} library={activeLibrary} collapsed={collapsed} setCollapsed={setCollapsed} isMobile={isMobile}/>
+      <style>{`*{box-sizing:border-box;margin:0;padding:0;} ::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:10px;} @keyframes spin{to{transform:rotate(360deg)}}${MOBILE_CSS}`}</style>
+      <Sidebar page={page} setPage={setPage} library={activeLibrary} collapsed={collapsed} setCollapsed={setCollapsed} className="sidebar-desktop"/>
       <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
-        <Header page={page} user={activeUser} library={activeLibrary} setPage={navigate} onLogout={logout} isMobile={isMobile} onBack={()=>{ if(pageHistory.length>0){const p=pageHistory[pageHistory.length-1];setPageHistory(h=>h.slice(0,-1));setPage(p);}}}/>
-        <main style={{flex:1,overflowY:"auto",paddingBottom:isMobile?60:0}}>{renderPage()}</main>
-        {isMobile && screen==="app" && <MobileBottomNav page={page} setPage={navigate}/>}
+        <Header page={page} user={activeUser} library={activeLibrary} setPage={setPage} onLogout={logout}/>
+        <main style={{flex:1,overflowY:"auto",paddingBottom:60}}>{renderPage()}</main>
+        <MobileNav page={page} setPage={setPage}/>
       </div>
     </div>
   );
