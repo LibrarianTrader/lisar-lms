@@ -1691,13 +1691,37 @@ Record generated via Open Library ISBN lookup. Verify LCSH headings against id.l
 
 function ItemsPage() {
   const items = BOOKS.flatMap(b=>Array.from({length:b.copies},(_, i)=>({id:`ITM${String(b.id).padStart(3,"0")}${i+1}`,barcode:`ITM${String(b.id).padStart(3,"0")}${String(i+1).padStart(2,"0")}`,title:b.title,author:b.author,callNo:`${b.ddc} ${b.author.split(",")[0].slice(0,3).toUpperCase()}`,location:["General Stacks","Reserve","Reference","Periodicals"][i%4],status:i===0&&b.status==="checked_out"?"checked_out":b.status==="reference"?"reference":"available"})));
-  const [q, setQ] = useState("");
+  const [q,           setQ]           = useState("");
+  const [editingItem, setEditingItem] = useState(null);
+  const [itemSaving,  setItemSaving]  = useState(false);
+  const [itemMsg,     setItemMsg]     = useState("");
   const filtered = items.filter(it=>q===""||it.title.toLowerCase().includes(q.toLowerCase())||it.barcode.includes(q));
   const statusBadge = s=>s==="available"?<Badge color="green">Available</Badge>:s==="checked_out"?<Badge color="red">Checked Out</Badge>:s==="reference"?<Badge color="purple">Reference</Badge>:<Badge color="gray">{s}</Badge>;
+  
+  const saveItem = async () => {
+    if(!editingItem)return;
+    setItemSaving(true);setItemMsg("");
+    try{
+      await api.catalogue.update(editingItem.bib_id||editingItem.id, {location:editingItem.location, status:editingItem.status, call_number:editingItem.callNo});
+      setItemMsg("✅ Item updated!");
+      setTimeout(()=>{setEditingItem(null);setItemMsg("");},1200);
+    }catch(e){setItemMsg("❌ "+(e.message||"Update failed"));}
+    finally{setItemSaving(false);}
+  };
   return (
     <div style={{padding:"28px 24px",maxWidth:1200}}>
+      {editingItem&&(
+        <Modal title="Edit Item" onClose={()=>setEditingItem(null)} width={480}>
+          <Input label="Barcode" value={editingItem.barcode||""} onChange={v=>setEditingItem(p=>({...p,barcode:v}))}/>
+          <Input label="Call Number" value={editingItem.callNo||""} onChange={v=>setEditingItem(p=>({...p,callNo:v}))}/>
+          <Select label="Location" value={editingItem.location||"General Stacks"} onChange={v=>setEditingItem(p=>({...p,location:v}))} options={["General Stacks","Reserve","Reference","Periodicals","Special Collections"].map(v=>({value:v,label:v}))}/>
+          <Select label="Status" value={editingItem.status||"available"} onChange={v=>setEditingItem(p=>({...p,status:v}))} options={[{value:"available",label:"Available"},{value:"checked_out",label:"Checked Out"},{value:"reference",label:"Reference Only"},{value:"lost",label:"Lost"},{value:"withdrawn",label:"Withdrawn"}]}/>
+          {itemMsg&&<div style={{padding:"8px 12px",borderRadius:7,background:itemMsg.startsWith("✅")?"#DCFCE7":"#FEE2E2",color:itemMsg.startsWith("✅")?"#15803D":"#B91C1C",fontSize:".82em",marginBottom:10}}>{itemMsg}</div>}
+          <div style={{display:"flex",gap:8,marginTop:8}}><Btn onClick={saveItem} disabled={itemSaving}>{itemSaving?"Saving…":"Save Changes"}</Btn><Btn variant="secondary" onClick={()=>setEditingItem(null)}>Cancel</Btn></div>
+        </Modal>
+      )}
       <PageHeader title="📦 Item Management" subtitle="Manage physical copies, barcodes and shelf locations"
-        action={<div style={{display:"flex",gap:8}}><Btn variant="secondary" icon="🏷️">Print Labels</Btn><Btn icon="➕">Add Copy</Btn></div>}/>
+        action={<div style={{display:"flex",gap:8}}><Btn variant="secondary" icon="🏷️">Print Labels</Btn><Btn icon="➕" onClick={()=>setEditingItem({barcode:"",callNo:"",location:"General Stacks",status:"available",title:"New Item"})}>Add Copy</Btn></div>}/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
         {[{label:"Total Copies",val:items.length,color:C.primary},{label:"Available",val:items.filter(i=>i.status==="available").length,color:C.success},{label:"Checked Out",val:items.filter(i=>i.status==="checked_out").length,color:C.warning},{label:"Reference Only",val:items.filter(i=>i.status==="reference").length,color:"#7C3AED"}].map((s,i)=>(
           <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px"}}>
@@ -1720,7 +1744,7 @@ function ItemsPage() {
             <span style={{fontFamily:"monospace",fontSize:".8em"}}>{it.callNo}</span>,
             <Badge color="gray">{it.location}</Badge>,
             statusBadge(it.status),
-            <div style={{display:"flex",gap:4}}><Btn size="sm" variant="secondary">Edit</Btn><Btn size="sm" variant="ghost">History</Btn></div>
+            <div style={{display:"flex",gap:4}}><Btn size="sm" variant="secondary" onClick={()=>setEditingItem({...it})}>Edit</Btn><Btn size="sm" variant="ghost">History</Btn></div>
           ]}))}/>
       </Card>
     </div>
@@ -1779,6 +1803,43 @@ function PatronIDCard({ patron, library }) {
 // ═══════════════════════════════════════════════════════════
 //  PATRONS
 // ═══════════════════════════════════════════════════════════
+function PatronEditForm({ patron, onSave, onClose }) {
+  const [form,    setForm]    = useState({...patron});
+  const [saving,  setSaving]  = useState(false);
+  const [msg,     setMsg]     = useState("");
+  const set = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  const save = async () => {
+    setSaving(true); setMsg("");
+    try {
+      const updated = await api.patrons.update(patron.id, form);
+      setMsg("✅ Saved successfully!");
+      setTimeout(()=>onSave(updated.patron||form),1000);
+    } catch(e) { setMsg("❌ "+(e.message||"Save failed")); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}} className="form-grid-2">
+        <div style={{gridColumn:"1/-1"}}><Input label="Full Name" value={form.name||""} onChange={v=>set("name",v)}/></div>
+        <div style={{paddingRight:8}}><Input label="Email" value={form.email||""} onChange={v=>set("email",v)}/></div>
+        <div style={{paddingLeft:8}}><Input label="Phone" value={form.phone||""} onChange={v=>set("phone",v)}/></div>
+        <div style={{paddingRight:8}}><Input label="Barcode / Member ID" value={form.barcode||""} onChange={v=>set("barcode",v)}/></div>
+        <div style={{paddingLeft:8}}><Select label="Patron Type" value={form.patron_type||form.type||"undergraduate"} onChange={v=>set("patron_type",v)} options={["faculty","postgraduate","undergraduate","staff","public"].map(v=>({value:v,label:v.charAt(0).toUpperCase()+v.slice(1)}))}/></div>
+        <div style={{gridColumn:"1/-1"}}><Input label="Department / Faculty" value={form.department||form.dept||""} onChange={v=>set("department",v)}/></div>
+        <div style={{paddingRight:8}}><Input label="Expiry Date" type="date" value={form.expiry_date||form.expiry||""} onChange={v=>set("expiry_date",v)}/></div>
+        <div style={{paddingLeft:8}}><Select label="Status" value={form.status||"active"} onChange={v=>set("status",v)} options={[{value:"active",label:"Active"},{value:"suspended",label:"Suspended"},{value:"expired",label:"Expired"}]}/></div>
+      </div>
+      {msg&&<div style={{padding:"8px 12px",borderRadius:7,background:msg.startsWith("✅")?"#DCFCE7":"#FEE2E2",color:msg.startsWith("✅")?"#15803D":"#B91C1C",fontSize:".82em",marginBottom:10}}>{msg}</div>}
+      <div style={{display:"flex",gap:8,marginTop:8}}>
+        <Btn onClick={save} disabled={saving}>{saving?"Saving…":"Save Changes"}</Btn>
+        <Btn variant="secondary" onClick={onClose}>Cancel</Btn>
+      </div>
+    </div>
+  );
+}
+
 function PatronsPage() {
   const [patrons, setPatrons]   = useState(PATRONS);
   const [showModal, setShowModal] = useState(false);
