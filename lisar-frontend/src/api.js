@@ -48,6 +48,7 @@ const auth = {
   logout:         ()                => post("/auth/logout"),
   me:             ()                => get("/auth/me"),
   changePassword: (currentPassword, newPassword) => post("/auth/change-password", { currentPassword, newPassword }),
+  register:       (data) => post("/auth/register", data),
 };
 
 const catalogue = {
