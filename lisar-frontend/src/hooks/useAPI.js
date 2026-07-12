@@ -18,17 +18,19 @@ function useFetch(fn, deps = []) {
   return { data, loading, error, reload: load };
 }
 
-export function useAuth() {
+export function useAuth(skipAutoLogin = false) {
   const [user,    setUser]    = useState(null);
   const [library, setLibrary] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (skipAutoLogin) { setLoading(false); return; }
+    
     api.auth.me()
       .then(d => { setUser(d.user); setLibrary(d.library); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [skipAutoLogin]);
 
   const login = async (email, password) => {
     const d = await api.login(email, password);
