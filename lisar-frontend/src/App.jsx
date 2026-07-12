@@ -294,7 +294,15 @@ function LoginPage({ onLogin, goLanding }) {
   const handleRegister = async () => {
     if(!name||!lib||!email||!pass){setErrMsg("All fields required");return;}
     setLoading(true);setErrMsg("");
-    try{const d=await api.auth.register({name,libraryName:lib,email:email.trim(),password:pass,libraryType:libType});setToken(d.token);onLogin(d);}
+    try{
+      const regData = {name, libraryName:lib, email:email.trim(), password:pass, libraryType:libType};
+      const endpoint = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+      const res = await fetch(endpoint+"/auth/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(regData)});
+      const d = await res.json();
+      if(!res.ok) throw new Error(d.error||"Registration failed");
+      if(d.token){localStorage.setItem("lisar_token",d.token);}
+      onLogin(d);
+    }
     catch(e){setErrMsg(e.message||"Registration failed");}
     finally{setLoading(false);}
   };
@@ -403,11 +411,19 @@ function Sidebar({ page, setPage, library, collapsed, setCollapsed }) {
   );
 }
 
-function Header({ page, user, library, setPage, onLogout }) {
+function Header({ page, user, library, setPage, onLogout, goBack, canGoBack }) {
   const [search, setSearch] = useState("");
   const title = NAV.find(n=>n.id===page)?.label || "Dashboard";
   return (
-    <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"0 24px",height:64,display:"flex",alignItems:"center",gap:16,position:"sticky",top:0,zIndex:50}}>
+    <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"0 16px",height:64,display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:50}}>
+      {canGoBack && (
+        <button onClick={goBack} title="Go back"
+          style={{width:34,height:34,borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:C.muted,flexShrink:0,transition:"all .15s"}}
+          onMouseOver={e=>{e.currentTarget.style.background=`${C.primary}0D`;e.currentTarget.style.color=C.primary;}}
+          onMouseOut={e=>{e.currentTarget.style.background=C.bg;e.currentTarget.style.color=C.muted;}}>
+          ←
+        </button>
+      )}
       <div style={{flex:1,maxWidth:400}}>
         <div style={{position:"relative"}}>
           <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:14,color:C.muted}}>🔍</span>
@@ -991,6 +1007,33 @@ function extractBibFromMARC(fields) {
   return { title:title.replace(/\s*\/\s*$|[\s:/]+$/,"").trim(), author:author.replace(/,?\s*$/,"").trim(), publisher:publisher.replace(/[,;]+$/,"").trim(), pubYear, pubPlace:pubPlace.replace(/[,:]+$/,"").trim(), edition, pages, isbn, issn, lccn, lcc:lcc.trim(), ddc, lang:lang041, summary, subjects:subjects.filter(Boolean), series, notes, genre, addedAuthors, contentType, mediaType, carrierType, url };
 }
 
+const LOC_CATALOGUE_PROMPT = `You are LISAR, an expert AI cataloguing librarian with complete mastery of DDC, LCC, MARC 21, LCSH, and Dublin Core.
+
+ALWAYS generate a complete catalogue record with ALL of the following sections:
+
+## Dublin Core Record
+All 15 DC elements (dc:title, dc:creator, dc:subject, dc:description, dc:publisher, dc:contributor, dc:date, dc:type, dc:format, dc:identifier, dc:source, dc:language, dc:relation, dc:coverage, dc:rights)
+
+## Classification
+DDC (Dewey Decimal Classification 23rd Ed.): Full class number with table extensions, step-by-step notation reasoning, cutter number, complete shelf label.
+LCC (Library of Congress Classification): Subclass letters, integer range, geographic cutter, author cutter, date, complete call number with construction steps.
+For Nigerian/African materials: Nigeria geographic .N6 (H schedules), DT515.5 (history), KTQ (Nigerian law), PL8671 (Yoruba), PR9387.9 (Nigerian literature in English).
+
+## LCSH Subject Headings (MARC 21 Tagged)
+Generate 4-6 authorised LCSH headings formatted as:
+650 _0 $a [Main heading] $x [Topical subdivision] $z [Geographic] $y [Chronological] $v [Form].
+651 _0 $a [Geographic heading] $x [Subdivision].
+655 _7 $a [Genre/form term]. $2 lcgft
+
+## MARC 21 Record (Key Fields)
+LDR, 008, 020/022, 040, 050, 082, 1XX, 245, 250, 264, 300, 336/337/338, 520, 650, 651, 655
+
+## RDA Description
+Title proper, Statement of responsibility, Edition, Publication, Extent, Identifier
+
+## Cataloguer Notes
+Classification decisions, alternative numbers, notes on Nigerian/African context if applicable.`;
+
 function CataloguingPage() {
   const [view,        setView]        = useState("list");
   const [apiBooks,    setApiBooks]    = useState(BOOKS);
@@ -1198,49 +1241,7 @@ Use the LCC, DDC, and LCSH subjects EXACTLY as provided — these are from the M
   const generateFromLOC = async () => {
     if (!locPicked) return;
     setGenerating(true); setRecord(null);
-    const systemPrompt = `You are LISAR, an expert AI cataloguing librarian with complete mastery of DDC, LCC, MARC 21, LCSH, and Dublin Core.
-
-ALWAYS generate a complete catalogue record with ALL of the following sections:
-
-## Dublin Core Record
-All 15 DC elements (dc:title, dc:creator, dc:subject, dc:description, dc:publisher, dc:contributor, dc:date, dc:type, dc:format, dc:identifier, dc:source, dc:language, dc:relation, dc:coverage, dc:rights)
-
-## Classification
-**DDC (Dewey Decimal Classification 23rd Ed.):**
-- Full class number with table extensions
-- Step-by-step notation reasoning
-- Cutter number construction
-- Complete shelf label: [number] [cutter]
-
-**LCC (Library of Congress Classification):**
-- Subclass letters and scope
-- Integer range and specific number
-- Geographic/topical cutter (first cutter)
-- Author/title cutter (second cutter)
-- Date
-- Complete call number: [Subclass][Integer].[Cutter1] [Cutter2] [Year]
-- Step-by-step construction explanation
-
-For Nigerian/African materials use correct cutters:
-- Nigeria geographic: .N6 (H schedules), .N5 (R schedule), DT515.5 (history)
-- Nigerian law: KTQ
-- Yoruba language: PL8671
-- Nigerian literature in English: PR9387.9
-
-## LCSH Subject Headings (MARC 21 Tagged)
-Generate 4-6 authorised LCSH headings. Format each exactly as:
-650 _0 $a [Main heading] $x [Topical subdivision] $y [Chronological] $z [Geographic] $v [Form subdivision].
-651 _0 $a [Geographic heading] $x [Subdivision].
-655 _7 $a [Genre/form term]. $2 lcgft
-
-## MARC 21 Record (Key Fields)
-LDR, 008, 020/022, 040, 050 ($a $b), 082 ($a $2 23), 1XX, 245, 250, 264, 300, 336/337/338, 520, 650, 651, 655
-
-## RDA Description
-Title proper, Statement of responsibility, Edition, Publication, Extent, Identifier
-
-## Cataloguer's Notes
-Classification decisions, alternative numbers considered, notes on Nigerian/African context if applicable.`;
+    const systemPrompt = LOC_CATALOGUE_PROMPT;
 
     const userMsg = `Generate catalogue record from this LOC Catalog data:
 
@@ -3745,29 +3746,33 @@ function MobileNav({ page, setPage }) {
 }
 
 export default function LISARApp() {
-  const [screen,    setScreen]    = useState("landing");
-  const [page,      setPage]      = useState("dashboard");
-  const [collapsed, setCollapsed] = useState(false);
-  const [user,      setUser]      = useState(null);
-  const [library,   setLibrary]   = useState(null);
+  const [screen,      setScreen]      = useState("landing");
+  const [page,        setPage]        = useState("dashboard");
+  const [pageHistory, setPageHistory] = useState([]);
+  const [collapsed,   setCollapsed]   = useState(false);
+  const [user,        setUser]        = useState(null);
+  const [library,     setLibrary]     = useState(null);
+
+  // Navigate with history tracking
+  const navigate = (newPage) => {
+    setPageHistory(h => [...h, page]);
+    setPage(newPage);
+  };
+  const goBack = () => {
+    setPageHistory(h => {
+      if (h.length === 0) return h;
+      const prev = h[h.length - 1];
+      setPage(prev);
+      return h.slice(0, -1);
+    });
+  };
+  const canGoBack = pageHistory.length > 0;
 
   // Session restore
   useEffect(()=>{
     if(!getToken()) return;
     api.auth.me().then(d=>{setUser(d.user);setLibrary(d.library);setScreen("app");setPage("dashboard");}).catch(()=>setToken(""));
   },[]);
-
-  // Back button — navigate within app instead of browser back
-  useEffect(()=>{
-    if(screen!=="app") return;
-    window.history.pushState({page},"",window.location.pathname);
-    const handler = (e)=>{
-      e.preventDefault();
-      window.history.pushState({page},"",window.location.pathname);
-    };
-    window.addEventListener("popstate", handler);
-    return ()=>window.removeEventListener("popstate", handler);
-  },[page, screen]);
 
   const login = (data) => {
     if(data){setUser(data.user);setLibrary(data.library);}
@@ -3810,11 +3815,11 @@ export default function LISARApp() {
   return (
     <div style={{display:"flex",height:"100vh",background:C.bg,fontFamily:"Inter,system-ui,sans-serif",overflow:"hidden"}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0;} ::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:10px;} @keyframes spin{to{transform:rotate(360deg)}}${MOBILE_CSS}`}</style>
-      <Sidebar page={page} setPage={setPage} library={activeLibrary} collapsed={collapsed} setCollapsed={setCollapsed} className="sidebar-desktop"/>
+      <Sidebar page={page} setPage={navigate} library={activeLibrary} collapsed={collapsed} setCollapsed={setCollapsed} className="sidebar-desktop"/>
       <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
-        <Header page={page} user={activeUser} library={activeLibrary} setPage={setPage} onLogout={logout}/>
+        <Header page={page} user={activeUser} library={activeLibrary} setPage={navigate} onLogout={logout} goBack={goBack} canGoBack={canGoBack}/>
         <main style={{flex:1,overflowY:"auto",paddingBottom:60}}>{renderPage()}</main>
-        <MobileNav page={page} setPage={setPage}/>
+        <MobileNav page={page} setPage={navigate}/>
       </div>
     </div>
   );
