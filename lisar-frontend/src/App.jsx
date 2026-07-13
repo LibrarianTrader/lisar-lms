@@ -181,6 +181,266 @@ function Select({ label, value, onChange, options }) {
 // ═══════════════════════════════════════════════════════════
 //  LANDING PAGE
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+//  PATRON PORTAL (signup + login + OPAC-only view)
+// ═══════════════════════════════════════════════════════════
+
+function PatronAuthPage({ onPatronLogin, goLanding }) {
+  const [tab,     setTab]     = useState("login");
+  const [name,    setName]    = useState("");
+  const [email,   setEmail]   = useState("");
+  const [phone,   setPhone]   = useState("");
+  const [libSlug, setLibSlug] = useState("");
+  const [pass,    setPass]    = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errMsg,  setErrMsg]  = useState("");
+
+  const handleLogin = async () => {
+    if(!email||!pass){setErrMsg("Email and password required");return;}
+    setLoading(true);setErrMsg("");
+    try {
+      const endpoint = (import.meta.env.VITE_API_URL||"http://localhost:4000/api");
+      const res = await fetch(endpoint+"/patrons/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:email.trim(),password:pass})});
+      const d = await res.json();
+      if(!res.ok) throw new Error(d.error||"Invalid credentials");
+      localStorage.setItem("lisar_patron_token", d.token);
+      onPatronLogin(d.patron, d.library);
+    } catch(e) { setErrMsg(e.message||"Login failed"); }
+    finally { setLoading(false); }
+  };
+
+  const handleSignup = async () => {
+    if(!name||!email||!pass||!libSlug){setErrMsg("All fields required");return;}
+    setLoading(true);setErrMsg("");
+    try {
+      const endpoint = (import.meta.env.VITE_API_URL||"http://localhost:4000/api");
+      const res = await fetch(endpoint+"/patrons/signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,email:email.trim(),phone,password:pass,librarySlug:libSlug.trim().toLowerCase()})});
+      const d = await res.json();
+      if(!res.ok) throw new Error(d.error||"Signup failed");
+      localStorage.setItem("lisar_patron_token", d.token);
+      onPatronLogin(d.patron, d.library);
+    } catch(e) { setErrMsg(e.message||"Signup failed"); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"Inter,system-ui,sans-serif"}}>
+      <div style={{width:"min(420px,100%)"}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{fontSize:36,marginBottom:6}}>📚</div>
+          <div style={{fontWeight:800,fontSize:"1.4em",color:C.text}}>Library <span style={{color:C.primary}}>Patron Portal</span></div>
+          <div style={{fontSize:".82em",color:C.muted,marginTop:4}}>Search the catalogue · Place holds · View your loans</div>
+        </div>
+        <Card>
+          <div style={{padding:"0 20px",borderBottom:`1px solid ${C.border}`,display:"flex"}}>
+            {[{id:"login",label:"Sign In"},{id:"signup",label:"Register"}].map(t=>(
+              <button key={t.id} onClick={()=>{setTab(t.id);setErrMsg("");}}
+                style={{flex:1,padding:"14px",border:"none",background:"none",fontWeight:600,fontSize:".85em",color:tab===t.id?C.primary:C.muted,borderBottom:`2px solid ${tab===t.id?C.primary:"transparent"}`,cursor:"pointer"}}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div style={{padding:"24px 20px"}}>
+            {errMsg&&<div style={{background:"#FEE2E2",borderRadius:7,padding:"8px 12px",marginBottom:14,fontSize:".8em",color:"#B91C1C"}}>{errMsg}</div>}
+            {tab==="login" ? (
+              <>
+                <Input label="Email" value={email} onChange={setEmail} placeholder="your@email.com"/>
+                <Input label="Password" type="password" value={pass} onChange={setPass} placeholder="••••••••"/>
+                <Btn full onClick={handleLogin} size="lg" disabled={loading}>{loading?"Signing in…":"Sign In →"}</Btn>
+              </>
+            ) : (
+              <>
+                <Input label="Full Name" value={name} onChange={setName} placeholder="Your full name" required/>
+                <Input label="Email" value={email} onChange={setEmail} placeholder="your@email.com" required/>
+                <Input label="Phone" value={phone} onChange={setPhone} placeholder="+234 8XX XXX XXXX"/>
+                <Input label="Password" type="password" value={pass} onChange={setPass} placeholder="Create a password" required/>
+                <Input label="Library Code" value={libSlug} onChange={setLibSlug} placeholder="e.g. unilag (ask your librarian)" required/>
+                <div style={{fontSize:".72em",color:C.muted,marginBottom:12,marginTop:-8}}>Ask your librarian for the Library Code to register</div>
+                <Btn full onClick={handleSignup} size="lg" disabled={loading}>{loading?"Registering…":"Create Patron Account →"}</Btn>
+              </>
+            )}
+          </div>
+        </Card>
+        <div style={{textAlign:"center",marginTop:16,display:"flex",gap:12,justifyContent:"center"}}>
+          <button onClick={goLanding} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:".8em"}}>← Back to homepage</button>
+          <span style={{color:C.border}}>|</span>
+          <span style={{fontSize:".8em",color:C.muted}}>Librarian? <a href="#" onClick={e=>{e.preventDefault();goLanding();}} style={{color:C.primary,fontWeight:600}}>Staff Login →</a></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PatronDashboardPage({ patron, library, onLogout }) {
+  const [q,        setQ]        = useState("");
+  const [selected, setSelected] = useState(null);
+  const [filter,   setFilter]   = useState("all");
+  const [tab,      setTab]      = useState("search");
+  const [books,    setBooks]    = useState(BOOKS);
+  const [loans,    setLoans]    = useState([]);
+  const [holds,    setHolds]    = useState([]);
+  const [holdMsg,  setHoldMsg]  = useState("");
+
+  useEffect(()=>{
+    api.catalogue.list().then(d=>{if(d?.bibs?.length)setBooks(d.bibs);}).catch(()=>{});
+  },[]);
+
+  const filtered = books.filter(b=>{
+    const qs = q.toLowerCase();
+    const match = q===""|||(b.title||"").toLowerCase().includes(qs)||(b.author||"").toLowerCase().includes(qs)||(b.subject||"").toLowerCase().includes(qs)||(b.isbn||"").includes(q);
+    const avail = filter==="available"?(b.status==="available"||(b.available>0)):true;
+    return match&&avail;
+  });
+
+  const statusBadge = s=>s==="available"?<Badge color="green">Available</Badge>:s==="checked_out"?<Badge color="red">Checked Out</Badge>:s==="reference"?<Badge color="purple">Reference Only</Badge>:<Badge color="gray">{s}</Badge>;
+
+  const placeHold = (book) => {
+    if(holds.find(h=>h.id===book.id)){setHoldMsg("Already on hold");setTimeout(()=>setHoldMsg(""),2000);return;}
+    setHolds(h=>[...h,book]);
+    setHoldMsg(`✅ Hold placed for "${book.title}"`);
+    setTimeout(()=>setHoldMsg(""),3000);
+  };
+
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"Inter,system-ui,sans-serif"}}>
+      {/* Header */}
+      <div style={{background:"#0F172A",padding:"0 20px",height:56,display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:50}}>
+        <span style={{fontSize:20}}>📖</span>
+        <span style={{fontWeight:700,color:"#fff",fontSize:".9em",flex:1}}>{library?.name||"Library"} <span style={{color:"#60A5FA",fontSize:".8em"}}>· Patron Portal</span></span>
+        <span style={{fontSize:".78em",color:"#94A3B8"}}>{patron?.name}</span>
+        <button onClick={onLogout} style={{background:"rgba(255,255,255,.1)",border:"none",color:"#94A3B8",cursor:"pointer",fontSize:".75em",padding:"5px 10px",borderRadius:6}}>Sign Out</button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{background:"#fff",borderBottom:`1px solid ${C.border}`,padding:"0 20px",display:"flex",gap:0}}>
+        {[{id:"search",label:"🔍 Search Catalogue"},{id:"holds",label:`📋 My Holds (${holds.length})`},{id:"account",label:"👤 My Account"}].map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)}
+            style={{padding:"12px 16px",border:"none",borderBottom:`2px solid ${tab===t.id?C.primary:"transparent"}`,background:"none",color:tab===t.id?C.primary:C.muted,fontWeight:tab===t.id?700:400,fontSize:".83em",cursor:"pointer",whiteSpace:"nowrap"}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{padding:"20px",maxWidth:1100,margin:"0 auto"}}>
+        {/* Search Tab */}
+        {tab==="search"&&(
+          <>
+            {holdMsg&&<div style={{padding:"10px 14px",background:`${C.success}10`,border:`1px solid ${C.success}30`,borderRadius:8,marginBottom:14,fontSize:".84em",color:C.success}}>{holdMsg}</div>}
+            <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:200,position:"relative"}}>
+                <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:C.muted}}>🔍</span>
+                <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by title, author, subject, ISBN…"
+                  style={{width:"100%",padding:"10px 12px 10px 36px",border:`1px solid ${C.border}`,borderRadius:8,fontSize:".9em",outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <select value={filter} onChange={e=>setFilter(e.target.value)} style={{padding:"10px 12px",border:`1px solid ${C.border}`,borderRadius:8,fontSize:".85em",outline:"none"}}>
+                <option value="all">All Items</option>
+                <option value="available">Available Only</option>
+              </select>
+            </div>
+            <div style={{fontSize:".78em",color:C.muted,marginBottom:12}}>{filtered.length} result{filtered.length!==1?"s":""}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:14}}>
+              {filtered.map((b,i)=>(
+                <div key={i} onClick={()=>setSelected(b)} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden",cursor:"pointer",transition:"all .18s"}}
+                  onMouseOver={e=>{e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,.1)";e.currentTarget.style.transform="translateY(-2px)";}}
+                  onMouseOut={e=>{e.currentTarget.style.boxShadow="";e.currentTarget.style.transform="";}}>
+                  <div style={{height:80,background:`linear-gradient(135deg,${b.cover||"#2563EB"},${b.cover||"#2563EB"}99)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>📖</div>
+                  <div style={{padding:"12px"}}>
+                    <div style={{fontWeight:700,fontSize:".85em",color:C.text,marginBottom:2,lineHeight:1.3}}>{b.title}</div>
+                    <div style={{fontSize:".75em",color:C.muted,marginBottom:8}}>{b.author}</div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      {statusBadge(b.status||"available")}
+                      <span style={{fontSize:".68em",color:C.muted}}>{b.ddc}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Holds Tab */}
+        {tab==="holds"&&(
+          <div>
+            {holds.length===0?(
+              <div style={{textAlign:"center",padding:"52px",background:"#fff",borderRadius:12,border:`1px solid ${C.border}`}}>
+                <div style={{fontSize:44,marginBottom:12}}>📋</div>
+                <div style={{fontWeight:700,color:C.text,marginBottom:6}}>No holds yet</div>
+                <div style={{fontSize:".84em",color:C.muted}}>Search the catalogue and place holds on items you need</div>
+              </div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {holds.map((h,i)=>(
+                  <div key={i} style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:10,padding:"14px 16px",display:"flex",gap:12,alignItems:"center"}}>
+                    <span style={{fontSize:24}}>📖</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:600,fontSize:".88em",color:C.text}}>{h.title}</div>
+                      <div style={{fontSize:".75em",color:C.muted}}>{h.author} · Hold placed today</div>
+                    </div>
+                    <Badge color="yellow">Pending</Badge>
+                    <button onClick={()=>setHolds(hs=>hs.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:18}}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Account Tab */}
+        {tab==="account"&&(
+          <div style={{maxWidth:500}}>
+            <Card style={{padding:"24px"}}>
+              <div style={{display:"flex",gap:14,marginBottom:20,alignItems:"center"}}>
+                <div style={{width:56,height:56,borderRadius:"50%",background:C.primary,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:"1.2em",fontWeight:700}}>
+                  {(patron?.name||"P").split(" ").map(n=>n[0]).join("").slice(0,2)}
+                </div>
+                <div>
+                  <div style={{fontWeight:700,fontSize:"1.05em",color:C.text}}>{patron?.name||"Patron"}</div>
+                  <div style={{fontSize:".8em",color:C.muted}}>{patron?.email}</div>
+                  <div style={{fontSize:".75em",color:C.primary,marginTop:2}}>{patron?.patron_type||"Member"} · {library?.name}</div>
+                </div>
+              </div>
+              {[["Patron ID",patron?.barcode||"—"],["Phone",patron?.phone||"—"],["Member Since",patron?.reg_date||"—"],["Account Status",patron?.status||"active"]].map(([k,v])=>(
+                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.border}`,fontSize:".84em"}}>
+                  <span style={{color:C.muted}}>{k}</span>
+                  <span style={{fontWeight:600,color:C.text,textTransform:"capitalize"}}>{v}</span>
+                </div>
+              ))}
+            </Card>
+          </div>
+        )}
+      </div>
+
+      {/* Book Detail Modal */}
+      {selected&&(
+        <Modal title={selected.title} onClose={()=>setSelected(null)} width={560}>
+          <div style={{display:"flex",gap:14,marginBottom:14}}>
+            <div style={{width:72,height:96,background:`linear-gradient(135deg,${selected.cover||"#2563EB"},${selected.cover||"#2563EB"}88)`,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0}}>📖</div>
+            <div>
+              <h2 style={{margin:"0 0 4px",fontSize:"1.05em",color:C.text}}>{selected.title}</h2>
+              <div style={{color:C.muted,fontSize:".85em",marginBottom:6}}>{selected.author}</div>
+              {statusBadge(selected.status||"available")}
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,fontSize:".82em",marginBottom:12}}>
+            {[["Publisher",selected.publisher],["Year",selected.year],["ISBN",selected.isbn],["Language",selected.language||selected.lang||"English"],["DDC",selected.ddc],["LCC",selected.lcc]].map(([k,v])=>(
+              <div key={k} style={{background:C.bg,borderRadius:7,padding:"8px 12px"}}>
+                <div style={{color:C.muted,fontSize:".7em",textTransform:"uppercase",marginBottom:2}}>{k}</div>
+                <div style={{color:C.text,fontWeight:500}}>{v||"—"}</div>
+              </div>
+            ))}
+          </div>
+          {selected.subject&&<div style={{background:C.bg,borderRadius:7,padding:"10px 12px",marginBottom:14,fontSize:".82em"}}><div style={{color:C.muted,fontSize:".7em",textTransform:"uppercase",marginBottom:4}}>Subjects</div><div>{selected.subject}</div></div>}
+          <div style={{display:"flex",gap:8}}>
+            <Btn full onClick={()=>{placeHold(selected);setSelected(null);}}>📋 Place Hold</Btn>
+            <Btn full variant="secondary" onClick={()=>setSelected(null)}>Close</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 function LandingPage({ onLogin }) {
   const features = [
     { icon:"🔍", title:"AI-Powered OPAC", desc:"Patrons search your full catalogue instantly. Smart suggestions, availability in real time." },
@@ -205,8 +465,9 @@ function LandingPage({ onLogin }) {
           <span style={{fontWeight:800,fontSize:"1.15em",color:C.text,letterSpacing:"-.02em"}}>LISAR <span style={{color:C.primary}}>LMS</span></span>
         </div>
         <div style={{display:"flex",gap:12}}>
-          <Btn variant="secondary" onClick={onLogin}>Sign In</Btn>
-          <Btn onClick={onLogin} icon="✨">Start Free Trial</Btn>
+          <Btn variant="secondary" onClick={()=>onLogin("patron")}>📚 Patron Portal</Btn>
+          <Btn variant="secondary" onClick={onLogin}>Staff Sign In</Btn>
+          <Btn onClick={onLogin} icon="✨">Start Free</Btn>
         </div>
       </nav>
       {/* Hero */}
@@ -3759,6 +4020,8 @@ export default function LISARApp() {
   const [collapsed,   setCollapsed]   = useState(false);
   const [user,        setUser]        = useState(null);
   const [library,     setLibrary]     = useState(null);
+  const [patron,      setPatron]      = useState(null);
+  const [patronLib,   setPatronLib]   = useState(null);
 
   // Navigate with history tracking
   const navigate = (newPage) => {
@@ -3775,6 +4038,29 @@ export default function LISARApp() {
   };
   const canGoBack = pageHistory.length > 0;
 
+  // Patron session restore
+  useEffect(()=>{
+    const ptoken = localStorage.getItem("lisar_patron_token");
+    if(!ptoken) return;
+    // Restore patron session
+    const savedPatron = localStorage.getItem("lisar_patron_data");
+    const savedLib    = localStorage.getItem("lisar_patron_library");
+    if(savedPatron){ setPatron(JSON.parse(savedPatron)); setPatronLib(JSON.parse(savedLib||"{}")); setScreen("patron"); }
+  },[]);
+
+  const handlePatronLogin = (p, lib) => {
+    setPatron(p); setPatronLib(lib);
+    localStorage.setItem("lisar_patron_data", JSON.stringify(p));
+    localStorage.setItem("lisar_patron_library", JSON.stringify(lib||{}));
+    setScreen("patron");
+  };
+  const handlePatronLogout = () => {
+    localStorage.removeItem("lisar_patron_token");
+    localStorage.removeItem("lisar_patron_data");
+    localStorage.removeItem("lisar_patron_library");
+    setPatron(null); setPatronLib(null); setScreen("landing");
+  };
+
   // Session restore — only if token exists AND user hasn't explicitly logged out
   useEffect(()=>{
     const token = localStorage.getItem("lisar_token") || sessionStorage.getItem("lisar_token");
@@ -3785,7 +4071,8 @@ export default function LISARApp() {
   },[]);
 
   const login = (data) => {
-    if(data){setUser(data.user);setLibrary(data.library);}
+    if(data==="patron"){ setScreen("patron_auth"); return; }
+    if(data&&data.user){setUser(data.user);setLibrary(data.library);}
     setScreen("app"); setPage("dashboard");
   };
   const logout = () => {
@@ -3798,16 +4085,24 @@ export default function LISARApp() {
   const activeUser    = user    || DEMO.user;
   const activeLibrary = library || DEMO.library;
 
-  if (screen==="landing") return (
-    <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>
-      <style>{`*{box-sizing:border-box;margin:0;padding:0;} @keyframes spin{to{transform:rotate(360deg)}} body{font-family:Inter,system-ui,sans-serif;}`}</style>
-      <LandingPage onLogin={()=>setScreen("login")}/>
+  const GLOBAL_STYLE = <style>{`*{box-sizing:border-box;margin:0;padding:0;} @keyframes spin{to{transform:rotate(360deg)}} body{font-family:Inter,system-ui,sans-serif;}${MOBILE_CSS}`}</style>;
+
+  if (screen==="landing") return <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>{GLOBAL_STYLE}<LandingPage onLogin={login}/></div>;
+
+  if (screen==="patron_auth") return (
+    <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>{GLOBAL_STYLE}
+      <PatronAuthPage onPatronLogin={handlePatronLogin} goLanding={()=>setScreen("landing")}/>
+    </div>
+  );
+
+  if (screen==="patron") return (
+    <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>{GLOBAL_STYLE}
+      <PatronDashboardPage patron={patron} library={patronLib} onLogout={handlePatronLogout}/>
     </div>
   );
 
   if (screen==="login") return (
-    <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>
-      <style>{`*{box-sizing:border-box;margin:0;padding:0;} @keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>{GLOBAL_STYLE}
       <LoginPage onLogin={login} goLanding={()=>setScreen("landing")}/>
     </div>
   );
