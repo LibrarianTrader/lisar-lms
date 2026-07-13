@@ -12,6 +12,9 @@ const db      = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
 
+// Add password_hash column if it doesn't exist (migration)
+try { db.exec("ALTER TABLE patrons ADD COLUMN password_hash TEXT"); } catch(_) {}
+
 // ─── SCHEMA ──────────────────────────────────────────────────
 db.exec(`
 
@@ -113,6 +116,7 @@ CREATE TABLE IF NOT EXISTS patrons (
   expiry_date  TEXT,
   status       TEXT    NOT NULL DEFAULT 'active',
   notes        TEXT,
+  password_hash TEXT,
   created_at   TEXT    DEFAULT (datetime('now')),
   UNIQUE(barcode, library_id)
 );
@@ -271,4 +275,3 @@ CREATE TABLE IF NOT EXISTS audit_log (
 `);
 
 module.exports = db;
-
