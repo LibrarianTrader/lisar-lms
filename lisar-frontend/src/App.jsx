@@ -288,7 +288,7 @@ function PatronDashboardPage({ patron, library, onLogout }) {
 
   const filtered = books.filter(b=>{
     const qs = q.toLowerCase();
-    const match = q===""|||(b.title||"").toLowerCase().includes(qs)||(b.author||"").toLowerCase().includes(qs)||(b.subject||"").toLowerCase().includes(qs)||(b.isbn||"").includes(q);
+    const match = q===""||((b.title||"").toLowerCase().includes(qs))||(b.author||"").toLowerCase().includes(qs)||(b.subject||"").toLowerCase().includes(qs)||(b.isbn||"").includes(q);
     const avail = filter==="available"?(b.status==="available"||(b.available>0)):true;
     return match&&avail;
   });
