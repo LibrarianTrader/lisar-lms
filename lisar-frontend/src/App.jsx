@@ -1048,25 +1048,7 @@ function OPACPage() {
           <div style={{fontSize:".82em",color:C.muted}}>Try a different search term or browse by subject above</div>
         </div>
       )}
-
-      {/* Detail Modal */}
-      {editingBib&&(
-        <Modal title="Edit Catalogue Record" onClose={()=>setEditingBib(null)} width={600}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}} className="form-grid-2">
-            <div style={{gridColumn:"1/-1"}}><Input label="Title" value={editingBib.title||""} onChange={v=>setEditingBib(p=>({...p,title:v}))}/></div>
-            <div style={{paddingRight:8}}><Input label="Author" value={editingBib.author||""} onChange={v=>setEditingBib(p=>({...p,author:v}))}/></div>
-            <div style={{paddingLeft:8}}><Input label="Year" value={editingBib.year||""} onChange={v=>setEditingBib(p=>({...p,year:v}))}/></div>
-            <div style={{paddingRight:8}}><Input label="Publisher" value={editingBib.publisher||""} onChange={v=>setEditingBib(p=>({...p,publisher:v}))}/></div>
-            <div style={{paddingLeft:8}}><Input label="ISBN" value={editingBib.isbn||""} onChange={v=>setEditingBib(p=>({...p,isbn:v}))}/></div>
-            <div style={{paddingRight:8}}><Input label="DDC Number" value={editingBib.ddc||""} onChange={v=>setEditingBib(p=>({...p,ddc:v}))}/></div>
-            <div style={{paddingLeft:8}}><Input label="LCC Call Number" value={editingBib.lcc||""} onChange={v=>setEditingBib(p=>({...p,lcc:v}))}/></div>
-            <div style={{gridColumn:"1/-1"}}><Input label="Subject Headings (LCSH)" value={editingBib.subject||""} onChange={v=>setEditingBib(p=>({...p,subject:v}))}/></div>
-            <div style={{gridColumn:"1/-1"}}><Input label="Description" value={editingBib.description||""} onChange={v=>setEditingBib(p=>({...p,description:v}))}/></div>
-          </div>
-          {editMsg&&<div style={{padding:"8px 12px",borderRadius:7,background:editMsg.startsWith("✅")?"#DCFCE7":"#FEE2E2",color:editMsg.startsWith("✅")?"#15803D":"#B91C1C",fontSize:".82em",marginBottom:10}}>{editMsg}</div>}
-          <div style={{display:"flex",gap:8}}><Btn onClick={saveEdit} disabled={editSaving}>{editSaving?"Saving…":"Save Changes"}</Btn><Btn variant="secondary" onClick={()=>setEditingBib(null)}>Cancel</Btn></div>
-        </Modal>
-      )}
+      
       {selected&&(
         <Modal title={selected.title} onClose={()=>setSelected(null)} width={600}>
           <div style={{display:"flex",gap:16,marginBottom:16}}>
