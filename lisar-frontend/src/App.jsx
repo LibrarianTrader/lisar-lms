@@ -634,6 +634,7 @@ const NAV = [
   { id:"journals",  icon:"🔬", label:"Journal & Research Finder", badge:"AI" },
   { id:"reports",   icon:"📊", label:"Reports" },
   { id:"settings",  icon:"⚙️", label:"Settings" },
+  { id:"chat", icon:"💬", label:"Chat & Support" },
 ];
 
 function Sidebar({ page, setPage, library, collapsed, setCollapsed }) {
@@ -4012,7 +4013,493 @@ function MobileNav({ page, setPage }) {
     </div>
   );
 }
+// ═══════════════════════════════════════════════════════════
+//  CHAT PAGE — Staff Chat, Patron Chat, AI Assistant,
+//              Suggestions & Support
+// ═══════════════════════════════════════════════════════════
+function ChatPage() {
+  const [tab, setTab] = useState("ai");
 
+  const tabs = [
+    { id:"ai",          icon:"🤖", label:"AI Assistant"  },
+    { id:"staff",       icon:"👥", label:"Staff Chat"     },
+    { id:"patron",      icon:"📚", label:"Patron Chat"    },
+    { id:"suggestions", icon:"💡", label:"Suggestions"    },
+    { id:"support",     icon:"🎫", label:"Support"        },
+  ];
+
+  return (
+    <div style={{padding:"28px 24px",maxWidth:1100}}>
+      <PageHeader title="💬 Chat & Support" subtitle="Staff messaging, patron collaboration, AI assistant, suggestions and help desk"/>
+
+      {/* Tab bar */}
+      <div style={{display:"flex",gap:0,marginBottom:20,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden"}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)}
+            style={{flex:1,padding:"12px 8px",border:"none",borderBottom:`2px solid ${tab===t.id?C.primary:"transparent"}`,
+              background:tab===t.id?`${C.primary}0A`:"transparent",cursor:"pointer",
+              display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+            <span style={{fontSize:18}}>{t.icon}</span>
+            <span style={{fontSize:".7em",fontWeight:tab===t.id?700:400,color:tab===t.id?C.primary:C.muted,whiteSpace:"nowrap"}}>{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {tab==="ai"          && <AIAssistantTab/>}
+      {tab==="staff"       && <StaffChatTab/>}
+      {tab==="patron"      && <PatronChatTab/>}
+      {tab==="suggestions" && <SuggestionsTab/>}
+      {tab==="support"     && <SupportTab/>}
+    </div>
+  );
+}
+
+// ── AI ASSISTANT ────────────────────────────────────────────
+function AIAssistantTab() {
+  const [messages, setMessages] = useState([
+    { role:"assistant", text:"Hi! I'm the LISAR AI Assistant. I can help with cataloguing, classification, reference questions, research guidance, library policy, and more. What do you need help with?" }
+  ]);
+  const [input, setInput]     = useState("");
+  const [loading, setLoading] = useState(false);
+  const bottomRef             = useRef(null);
+
+  useEffect(()=>{ bottomRef.current?.scrollIntoView({behavior:"smooth"}); }, [messages]);
+
+  const send = async () => {
+    if (!input.trim() || loading) return;
+    const userMsg = input.trim();
+    setInput("");
+    setMessages(m=>[...m,{role:"user",text:userMsg}]);
+    setLoading(true);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-6",
+          max_tokens:1000,
+          system:`You are the LISAR LMS AI Assistant — an expert library assistant built into the LISAR Library Management System. You help librarians and patrons with:
+- Cataloguing and classification (DDC, LCC, LCSH, MARC 21, Dublin Core, RDA)
+- Reference and research questions
+- Library policy and best practices
+- Book recommendations and subject guidance
+- ILL and acquisitions advice
+- Nigerian library context (NLA, academic libraries, university libraries)
+Be concise, professional and helpful. Use bullet points where appropriate.`,
+          messages: [
+            ...messages.filter(m=>m.role!=="assistant"||messages.indexOf(m)>0).map(m=>({role:m.role,content:m.text})),
+            {role:"user",content:userMsg}
+          ]
+        })
+      });
+      const data = await res.json();
+      const reply = data.content?.find(b=>b.type==="text")?.text || "Sorry, I couldn't generate a response.";
+      setMessages(m=>[...m,{role:"assistant",text:reply}]);
+    } catch {
+      setMessages(m=>[...m,{role:"assistant",text:"⚠️ Connection error. Please check your internet and try again."}]);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <Card style={{display:"flex",flexDirection:"column",height:520}}>
+      <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",gap:10,alignItems:"center"}}>
+        <span style={{fontSize:20}}>🤖</span>
+        <div>
+          <div style={{fontWeight:700,fontSize:".88em",color:C.text}}>LISAR AI Assistant</div>
+          <div style={{fontSize:".7em",color:C.success}}>● Online</div>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div style={{flex:1,overflowY:"auto",padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
+        {messages.map((m,i)=>(
+          <div key={i} style={{display:"flex",gap:10,justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+            {m.role==="assistant"&&<div style={{width:32,height:32,borderRadius:"50%",background:`${C.primary}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>🤖</div>}
+            <div style={{maxWidth:"75%",padding:"10px 14px",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",
+              background:m.role==="user"?C.primary:C.bg,color:m.role==="user"?"#fff":C.text,
+              fontSize:".84em",lineHeight:1.6,whiteSpace:"pre-wrap"}}>
+              {m.text}
+            </div>
+            {m.role==="user"&&<div style={{width:32,height:32,borderRadius:"50%",background:C.primary,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:".72em",fontWeight:700,flexShrink:0}}>ME</div>}
+          </div>
+        ))}
+        {loading&&(
+          <div style={{display:"flex",gap:10}}>
+            <div style={{width:32,height:32,borderRadius:"50%",background:`${C.primary}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🤖</div>
+            <div style={{padding:"10px 14px",background:C.bg,borderRadius:"14px 14px 14px 4px",display:"flex",gap:4,alignItems:"center"}}>
+              {[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:C.muted,animation:`bounce 1s ${i*0.2}s infinite`}}/>)}
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef}/>
+      </div>
+
+      {/* Suggestions */}
+      <div style={{padding:"8px 16px",display:"flex",gap:6,flexWrap:"wrap",borderTop:`1px solid ${C.border}`}}>
+        {["How do I catalogue a journal?","What is the DDC for Computer Science?","Explain MARC 21 fields","ILL request process"].map(s=>(
+          <button key={s} onClick={()=>setInput(s)} style={{padding:"4px 10px",borderRadius:20,border:`1px solid ${C.border}`,background:C.bg,fontSize:".7em",cursor:"pointer",color:C.muted}}>{s}</button>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div style={{padding:"12px 16px",borderTop:`1px solid ${C.border}`,display:"flex",gap:8}}>
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&send()}
+          placeholder="Ask anything about library science, cataloguing, research…"
+          style={{flex:1,padding:"10px 14px",border:`1px solid ${C.border}`,borderRadius:24,fontSize:".85em",outline:"none",color:C.text}}
+          onFocus={e=>e.target.style.borderColor=C.primary} onBlur={e=>e.target.style.borderColor=C.border}/>
+        <button onClick={send} disabled={!input.trim()||loading}
+          style={{width:42,height:42,borderRadius:"50%",background:input.trim()&&!loading?C.primary:C.border,border:"none",cursor:input.trim()&&!loading?"pointer":"default",color:"#fff",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          ➤
+        </button>
+      </div>
+    </Card>
+  );
+}
+
+// ── STAFF CHAT ──────────────────────────────────────────────
+function StaffChatTab() {
+  const [channels] = useState([
+    {id:"general",name:"# general",unread:0},
+    {id:"cataloguing",name:"# cataloguing",unread:2},
+    {id:"circulation",name:"# circulation",unread:0},
+    {id:"acquisitions",name:"# acquisitions",unread:1},
+    {id:"announcements",name:"📢 announcements",unread:0},
+  ]);
+  const [activeChannel, setActiveChannel] = useState("general");
+  const [allMessages, setAllMessages] = useState({
+    general:[
+      {id:1,user:"Adewale Okonkwo",avatar:"AO",time:"9:14 AM",text:"Good morning everyone! Reminder: cataloguing of the new batch begins today."},
+      {id:2,user:"Dr. Taiwo Oladele",avatar:"TO",time:"9:22 AM",text:"Noted. I'll be at the desk from 10 AM."},
+      {id:3,user:"Ms. Amina Suleiman",avatar:"AS",time:"9:45 AM",text:"The circulation desk is set up. Ready for patrons."},
+    ],
+    cataloguing:[
+      {id:1,user:"Mr. Tunde Bakare",avatar:"TB",time:"8:30 AM",text:"I need the DDC schedules for the new Science titles."},
+      {id:2,user:"Adewale Okonkwo",avatar:"AO",time:"8:45 AM",text:"Check the 500s section — I've left the schedule on the desk."},
+    ],
+    circulation:[
+      {id:1,user:"Ms. Amina Suleiman",avatar:"AS",time:"10:02 AM",text:"PAT0002 has an overdue item. Should I send a notice?"},
+    ],
+    acquisitions:[
+      {id:1,user:"Adewale Okonkwo",avatar:"AO",time:"Yesterday",text:"New order approved — 5 copies of Modern African Literature Anthology."},
+    ],
+    announcements:[
+      {id:1,user:"Adewale Okonkwo",avatar:"AO",time:"Monday",text:"📢 Library will be closed on Saturday for maintenance. All staff should plan accordingly."},
+    ],
+  });
+  const [input, setInput] = useState("");
+  const bottomRef = useRef(null);
+  useEffect(()=>{ bottomRef.current?.scrollIntoView({behavior:"smooth"}); },[activeChannel, allMessages]);
+
+  const send = () => {
+    if (!input.trim()) return;
+    const msg = {id:Date.now(),user:"Adewale Okonkwo",avatar:"AO",time:new Date().toLocaleTimeString("en-NG",{hour:"2-digit",minute:"2-digit"}),text:input.trim()};
+    setAllMessages(m=>({...m,[activeChannel]:[...(m[activeChannel]||[]),msg]}));
+    setInput("");
+  };
+
+  const messages = allMessages[activeChannel] || [];
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"200px 1fr",gap:0,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",height:520}}>
+      {/* Sidebar */}
+      <div style={{background:C.sidebar,display:"flex",flexDirection:"column"}}>
+        <div style={{padding:"14px 12px",borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+          <div style={{fontWeight:700,fontSize:".8em",color:"#94A3B8",textTransform:"uppercase",letterSpacing:".05em"}}>Staff Channels</div>
+        </div>
+        {channels.map(ch=>(
+          <button key={ch.id} onClick={()=>setActiveChannel(ch.id)}
+            style={{padding:"10px 12px",border:"none",background:activeChannel===ch.id?"rgba(37,99,235,.25)":"transparent",
+              cursor:"pointer",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:".82em",color:activeChannel===ch.id?"#fff":"#94A3B8",fontWeight:activeChannel===ch.id?600:400}}>{ch.name}</span>
+            {ch.unread>0&&<span style={{background:C.danger,color:"#fff",borderRadius:10,padding:"1px 6px",fontSize:".65em",fontWeight:700}}>{ch.unread}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Chat area */}
+      <div style={{display:"flex",flexDirection:"column",background:C.card}}>
+        <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,fontWeight:700,fontSize:".88em",color:C.text}}>
+          {channels.find(c=>c.id===activeChannel)?.name}
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
+          {messages.map(m=>(
+            <div key={m.id} style={{display:"flex",gap:10}}>
+              <div style={{width:34,height:34,borderRadius:"50%",background:C.primary,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:".7em",fontWeight:700,flexShrink:0}}>{m.avatar}</div>
+              <div>
+                <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:2}}>
+                  <span style={{fontWeight:700,fontSize:".84em",color:C.text}}>{m.user}</span>
+                  <span style={{fontSize:".7em",color:C.muted}}>{m.time}</span>
+                </div>
+                <div style={{fontSize:".84em",color:C.text,lineHeight:1.5}}>{m.text}</div>
+              </div>
+            </div>
+          ))}
+          <div ref={bottomRef}/>
+        </div>
+        <div style={{padding:"12px 16px",borderTop:`1px solid ${C.border}`,display:"flex",gap:8}}>
+          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()}
+            placeholder={`Message ${channels.find(c=>c.id===activeChannel)?.name}…`}
+            style={{flex:1,padding:"9px 14px",border:`1px solid ${C.border}`,borderRadius:24,fontSize:".85em",outline:"none"}}
+            onFocus={e=>e.target.style.borderColor=C.primary} onBlur={e=>e.target.style.borderColor=C.border}/>
+          <button onClick={send} style={{width:38,height:38,borderRadius:"50%",background:C.primary,border:"none",cursor:"pointer",color:"#fff",fontSize:16}}>➤</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PATRON CHAT ─────────────────────────────────────────────
+function PatronChatTab() {
+  const [rooms] = useState([
+    {id:"research",name:"📖 Research Corner",desc:"Collaborate on research topics",members:12},
+    {id:"postgrad",name:"🎓 Postgraduate Hub",desc:"Postgraduate students discussion",members:8},
+    {id:"law",name:"⚖️ Law Students",desc:"Law research and case discussions",members:15},
+    {id:"science",name:"🔬 Science & Tech",desc:"STEM discussion and resources",members:21},
+    {id:"literature",name:"✍️ Literature Circle",desc:"Books, authors and literary discussion",members:7},
+  ]);
+  const [activeRoom, setActiveRoom] = useState("research");
+  const [allMessages, setAllMessages] = useState({
+    research:[
+      {id:1,user:"Fatima Al-Amin",avatar:"FA",time:"10:05 AM",text:"Has anyone found good resources on computational linguistics?"},
+      {id:2,user:"Yusuf Ibrahim",avatar:"YI",time:"10:12 AM",text:"Check the Journal of Computational Linguistics — we have it in the e-resources section!"},
+      {id:3,user:"Fatima Al-Amin",avatar:"FA",time:"10:15 AM",text:"Thank you! Also found Chomsky's Syntactic Structures in the stacks 📚"},
+    ],
+    postgrad:[
+      {id:1,user:"Chukwuemeka Obi",avatar:"CO",time:"9:00 AM",text:"Anyone working on machine learning thesis? Looking to brainstorm."},
+    ],
+    law:[
+      {id:1,user:"Prof. Ngozi Adeyemi",avatar:"NA",time:"Yesterday",text:"Nigerian Constitutional Law 2025 edition is now available at the reference desk."},
+    ],
+    science:[],
+    literature:[
+      {id:1,user:"Amaka Nwosu",avatar:"AN",time:"2 days ago",text:"Just finished Things Fall Apart again — what a masterpiece!"},
+    ],
+  });
+  const [input, setInput] = useState("");
+  const bottomRef = useRef(null);
+  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[activeRoom,allMessages]);
+
+  const send = () => {
+    if (!input.trim()) return;
+    const msg = {id:Date.now(),user:"Adewale Okonkwo",avatar:"AO",time:new Date().toLocaleTimeString("en-NG",{hour:"2-digit",minute:"2-digit"}),text:input.trim()};
+    setAllMessages(m=>({...m,[activeRoom]:[...(m[activeRoom]||[]),msg]}));
+    setInput("");
+  };
+
+  const messages = allMessages[activeRoom]||[];
+  const room = rooms.find(r=>r.id===activeRoom);
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"220px 1fr",gap:0,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",height:520}}>
+      {/* Room list */}
+      <div style={{background:C.sidebar,display:"flex",flexDirection:"column"}}>
+        <div style={{padding:"14px 12px",borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+          <div style={{fontWeight:700,fontSize:".8em",color:"#94A3B8",textTransform:"uppercase",letterSpacing:".05em"}}>Study Rooms</div>
+        </div>
+        {rooms.map(r=>(
+          <button key={r.id} onClick={()=>setActiveRoom(r.id)}
+            style={{padding:"10px 12px",border:"none",background:activeRoom===r.id?"rgba(37,99,235,.25)":"transparent",cursor:"pointer",textAlign:"left"}}>
+            <div style={{fontSize:".82em",color:activeRoom===r.id?"#fff":"#94A3B8",fontWeight:activeRoom===r.id?600:400}}>{r.name}</div>
+            <div style={{fontSize:".65em",color:"#64748B",marginTop:1}}>{r.members} members</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Chat area */}
+      <div style={{display:"flex",flexDirection:"column",background:C.card}}>
+        <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`}}>
+          <div style={{fontWeight:700,fontSize:".88em",color:C.text}}>{room?.name}</div>
+          <div style={{fontSize:".72em",color:C.muted}}>{room?.desc} · {room?.members} members</div>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
+          {messages.length===0&&(
+            <div style={{textAlign:"center",padding:"40px 20px",color:C.muted}}>
+              <div style={{fontSize:32,marginBottom:8}}>💬</div>
+              <div style={{fontSize:".85em"}}>No messages yet. Start the conversation!</div>
+            </div>
+          )}
+          {messages.map(m=>(
+            <div key={m.id} style={{display:"flex",gap:10}}>
+              <div style={{width:34,height:34,borderRadius:"50%",background:`${C.primary}20`,display:"flex",alignItems:"center",justifyContent:"center",color:C.primary,fontSize:".7em",fontWeight:700,flexShrink:0}}>{m.avatar}</div>
+              <div>
+                <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:2}}>
+                  <span style={{fontWeight:700,fontSize:".84em",color:C.text}}>{m.user}</span>
+                  <span style={{fontSize:".7em",color:C.muted}}>{m.time}</span>
+                </div>
+                <div style={{fontSize:".84em",color:C.text,lineHeight:1.5}}>{m.text}</div>
+              </div>
+            </div>
+          ))}
+          <div ref={bottomRef}/>
+        </div>
+        <div style={{padding:"12px 16px",borderTop:`1px solid ${C.border}`,display:"flex",gap:8}}>
+          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()}
+            placeholder="Share a thought or resource with the group…"
+            style={{flex:1,padding:"9px 14px",border:`1px solid ${C.border}`,borderRadius:24,fontSize:".85em",outline:"none"}}
+            onFocus={e=>e.target.style.borderColor=C.primary} onBlur={e=>e.target.style.borderColor=C.border}/>
+          <button onClick={send} style={{width:38,height:38,borderRadius:"50%",background:C.primary,border:"none",cursor:"pointer",color:"#fff",fontSize:16}}>➤</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── SUGGESTIONS ─────────────────────────────────────────────
+function SuggestionsTab() {
+  const [suggestions, setSuggestions] = useState([
+    {id:1,user:"Dr. Taiwo Oladele",type:"Feature",title:"Bulk MARC import tool",desc:"Allow batch import of MARC records from external sources like OCLC.",status:"under_review",votes:8,date:"2025-06-20"},
+    {id:2,user:"Fatima Al-Amin",type:"UI",title:"Dark mode for OPAC",desc:"A dark mode option would be easier on the eyes for long research sessions.",status:"planned",votes:14,date:"2025-06-22"},
+    {id:3,user:"Chukwuemeka Obi",type:"Feature",title:"Mobile barcode scanner",desc:"Integrate phone camera as barcode scanner for faster circulation.",status:"in_progress",votes:22,date:"2025-06-25"},
+    {id:4,user:"Ms. Amina Suleiman",type:"Integration",title:"SMS notifications",desc:"Send overdue notices via SMS in addition to email.",status:"planned",votes:11,date:"2025-06-28"},
+  ]);
+  const [showForm, setShowForm] = useState(false);
+  const [newSug, setNewSug]     = useState({type:"Feature",title:"",desc:""});
+  const [voted, setVoted]       = useState([]);
+
+  const statusBadge = s=>({under_review:<Badge color="yellow">Under Review</Badge>,planned:<Badge color="blue">Planned</Badge>,in_progress:<Badge color="purple">In Progress</Badge>,done:<Badge color="green">Implemented</Badge>})[s]||<Badge color="gray">{s}</Badge>;
+
+  const submit = () => {
+    if (!newSug.title||!newSug.desc) return;
+    setSuggestions(s=>[{id:Date.now(),user:"Adewale Okonkwo",type:newSug.type,title:newSug.title,desc:newSug.desc,status:"under_review",votes:1,date:new Date().toISOString().split("T")[0]},...s]);
+    setNewSug({type:"Feature",title:"",desc:""});
+    setShowForm(false);
+  };
+
+  const vote = (id) => {
+    if (voted.includes(id)) return;
+    setSuggestions(s=>s.map(x=>x.id===id?{...x,votes:x.votes+1}:x));
+    setVoted(v=>[...v,id]);
+  };
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={{fontSize:".82em",color:C.muted}}>Submit ideas for LISAR LMS improvements to the development team</div>
+        <Btn onClick={()=>setShowForm(true)} icon="💡">New Suggestion</Btn>
+      </div>
+
+      {showForm&&(
+        <Card style={{padding:"20px",marginBottom:16,border:`1px solid ${C.primary}25`}}>
+          <div style={{fontWeight:700,fontSize:".88em",color:C.text,marginBottom:12}}>Submit a Suggestion</div>
+          <Select label="Type" value={newSug.type} onChange={v=>setNewSug(s=>({...s,type:v}))} options={["Feature","UI","Integration","Performance","Bug Fix"].map(v=>({value:v,label:v}))}/>
+          <Input label="Title" value={newSug.title} onChange={v=>setNewSug(s=>({...s,title:v}))} placeholder="Short, clear title for your suggestion" required/>
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:".78em",fontWeight:600,color:C.muted,marginBottom:4,textTransform:"uppercase",letterSpacing:".04em"}}>Description <span style={{color:C.danger}}>*</span></label>
+            <textarea value={newSug.desc} onChange={e=>setNewSug(s=>({...s,desc:e.target.value}))} placeholder="Describe your suggestion in detail…" rows={3}
+              style={{width:"100%",padding:"9px 12px",border:`1px solid ${C.border}`,borderRadius:8,fontSize:".9em",color:C.text,resize:"vertical",outline:"none",boxSizing:"border-box",fontFamily:"Inter,system-ui,sans-serif"}}/>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <Btn onClick={submit} disabled={!newSug.title||!newSug.desc}>Submit Suggestion</Btn>
+            <Btn variant="secondary" onClick={()=>setShowForm(false)}>Cancel</Btn>
+          </div>
+        </Card>
+      )}
+
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {suggestions.sort((a,b)=>b.votes-a.votes).map(s=>(
+          <Card key={s.id} style={{padding:"16px"}}>
+            <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+              {/* Vote */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,flexShrink:0}}>
+                <button onClick={()=>vote(s.id)} style={{width:36,height:36,borderRadius:8,border:`1px solid ${voted.includes(s.id)?C.primary:C.border}`,background:voted.includes(s.id)?`${C.primary}10`:"transparent",cursor:voted.includes(s.id)?"default":"pointer",fontSize:16}}>▲</button>
+                <span style={{fontWeight:700,color:voted.includes(s.id)?C.primary:C.text,fontSize:".88em"}}>{s.votes}</span>
+              </div>
+              {/* Content */}
+              <div style={{flex:1}}>
+                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                  <span style={{fontWeight:700,fontSize:".9em",color:C.text}}>{s.title}</span>
+                  <Badge color="gray">{s.type}</Badge>
+                  {statusBadge(s.status)}
+                </div>
+                <div style={{fontSize:".82em",color:C.muted,marginBottom:6,lineHeight:1.5}}>{s.desc}</div>
+                <div style={{fontSize:".72em",color:C.muted}}>By {s.user} · {s.date}</div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── SUPPORT ─────────────────────────────────────────────────
+function SupportTab() {
+  const [tickets, setTickets] = useState([
+    {id:"TKT-001",user:"Chukwuemeka Obi",title:"Cannot renew item — system shows max renewals but I've only renewed once",type:"Bug",priority:"High",status:"open",date:"2025-06-28",response:""},
+    {id:"TKT-002",user:"Fatima Al-Amin",title:"OPAC search not returning results for ISSN queries",type:"Bug",priority:"Medium",status:"in_progress",date:"2025-06-27",response:"We are investigating this issue."},
+    {id:"TKT-003",user:"Ms. Amina Suleiman",title:"Barcode printer labels are misaligned",type:"Technical",priority:"Low",status:"resolved",date:"2025-06-25",response:"Fixed — update label template to 50x25mm and reprint."},
+  ]);
+  const [showForm, setShowForm]   = useState(false);
+  const [selected, setSelected]   = useState(null);
+  const [newTicket, setNewTicket] = useState({title:"",type:"Bug",priority:"Medium",desc:""});
+
+  const priorityColor = p=>p==="High"?C.danger:p==="Medium"?C.warning:C.muted;
+  const statusBadge   = s=>({open:<Badge color="red">Open</Badge>,in_progress:<Badge color="blue">In Progress</Badge>,resolved:<Badge color="green">Resolved</Badge>,closed:<Badge color="gray">Closed</Badge>})[s]||<Badge color="gray">{s}</Badge>;
+
+  const submit = () => {
+    if (!newTicket.title||!newTicket.desc) return;
+    const id = `TKT-${String(tickets.length+1).padStart(3,"0")}`;
+    setTickets(t=>[{id,user:"Adewale Okonkwo",title:newTicket.title,type:newTicket.type,priority:newTicket.priority,status:"open",date:new Date().toISOString().split("T")[0],response:""},...t]);
+    setNewTicket({title:"",type:"Bug",priority:"Medium",desc:""});
+    setShowForm(false);
+  };
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={{fontSize:".82em",color:C.muted}}>Report bugs or technical issues to the LISAR support team</div>
+        <Btn onClick={()=>setShowForm(true)} icon="🎫">New Ticket</Btn>
+      </div>
+
+      {showForm&&(
+        <Card style={{padding:"20px",marginBottom:16,border:`1px solid ${C.danger}20`}}>
+          <div style={{fontWeight:700,fontSize:".88em",color:C.text,marginBottom:12}}>Open a Support Ticket</div>
+          <Input label="Issue Title" value={newTicket.title} onChange={v=>setNewTicket(t=>({...t,title:v}))} placeholder="Brief description of the issue" required/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <Select label="Type" value={newTicket.type} onChange={v=>setNewTicket(t=>({...t,type:v}))} options={["Bug","Technical","Account","Feature Request","Other"].map(v=>({value:v,label:v}))}/>
+            <Select label="Priority" value={newTicket.priority} onChange={v=>setNewTicket(t=>({...t,priority:v}))} options={["Low","Medium","High","Critical"].map(v=>({value:v,label:v}))}/>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:".78em",fontWeight:600,color:C.muted,marginBottom:4,textTransform:"uppercase",letterSpacing:".04em"}}>Full Description <span style={{color:C.danger}}>*</span></label>
+            <textarea value={newTicket.desc} onChange={e=>setNewTicket(t=>({...t,desc:e.target.value}))} placeholder="Describe the issue in detail — include steps to reproduce, what you expected, and what happened…" rows={4}
+              style={{width:"100%",padding:"9px 12px",border:`1px solid ${C.border}`,borderRadius:8,fontSize:".9em",color:C.text,resize:"vertical",outline:"none",boxSizing:"border-box",fontFamily:"Inter,system-ui,sans-serif"}}/>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <Btn variant="danger" onClick={submit} disabled={!newTicket.title||!newTicket.desc}>Submit Ticket</Btn>
+            <Btn variant="secondary" onClick={()=>setShowForm(false)}>Cancel</Btn>
+          </div>
+        </Card>
+      )}
+
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {tickets.map(t=>(
+          <Card key={t.id} style={{padding:"16px",cursor:"pointer",border:selected?.id===t.id?`1px solid ${C.primary}`:undefined}} onClick={()=>setSelected(selected?.id===t.id?null:t)}>
+            <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                  <span style={{fontFamily:"monospace",fontSize:".78em",color:C.primary,fontWeight:700}}>{t.id}</span>
+                  <Badge color="gray">{t.type}</Badge>
+                  <span style={{fontSize:".72em",fontWeight:700,color:priorityColor(t.priority)}}>● {t.priority}</span>
+                  {statusBadge(t.status)}
+                </div>
+                <div style={{fontWeight:600,fontSize:".88em",color:C.text,marginBottom:4}}>{t.title}</div>
+                <div style={{fontSize:".72em",color:C.muted}}>By {t.user} · {t.date}</div>
+                {selected?.id===t.id&&t.response&&(
+                  <div style={{marginTop:10,padding:"10px 12px",background:`${C.success}10`,border:`1px solid ${C.success}25`,borderRadius:8}}>
+                    <div style={{fontSize:".72em",fontWeight:700,color:C.success,marginBottom:4}}>SUPPORT RESPONSE</div>
+                    <div style={{fontSize:".82em",color:C.text}}>{t.response}</div>
+                  </div>
+                )}
+              </div>
+              <div style={{fontSize:".72em",color:C.muted,flexShrink:0}}>{selected?.id===t.id?"▲":"▼"}</div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
 export default function LISARApp() {
   const [screen,      setScreen]      = useState("landing");
   const [page,        setPage]        = useState("dashboard");
@@ -4120,6 +4607,7 @@ export default function LISARApp() {
     if (page==="settings")    return <SettingsPage/>;
     if (page==="serials")     return <SerialsPage/>;
     if (page==="ill")         return <ILLPage/>;
+    if (page==="chat")        return <ChatPage/>;
     return <DashboardPage setPage={setPage}/>;
   };
 
