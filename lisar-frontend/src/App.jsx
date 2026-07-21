@@ -476,8 +476,8 @@ function LandingPage({ onLogin }) {
         <h1 style={{fontSize:"3em",fontWeight:800,margin:"0 0 16px",lineHeight:1.1,letterSpacing:"-.02em"}}>The Modern Library<br/><span style={{color:"#60A5FA"}}>Management System</span></h1>
         <p style={{fontSize:"1.1em",color:"#94A3B8",maxWidth:560,margin:"0 auto 32px",lineHeight:1.7}}>LISAR LMS brings AI-assisted cataloguing, circulation, patron management and OPAC into one beautiful platform any library can adopt in minutes.</p>
         <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
-          <Btn size="lg" onClick={onLogin} icon="🚀">Start Free — No Credit Card</Btn>
-          <Btn size="lg" variant="secondary" onClick={onLogin} color="#fff">View Demo Library</Btn>
+          <Btn size="lg" onClick={onLogin} icon="🚀" color="#0F172A">Start Free — No Credit Card</Btn>
+          <Btn size="lg" variant="secondary" onClick={onLogin} color="#0F172A">View Demo Library</Btn>
         </div>
         <div style={{marginTop:20,fontSize:".78em",color:"#64748B"}}>Trusted by Academic, Public, School and Special Libraries across Africa and beyond</div>
       </div>
