@@ -66,7 +66,7 @@ const ACQUISITIONS = [
 const STATS = { totalItems:12847, totalBibs:8432, activePatrons:3241, todayCheckouts:47, todayReturns:38, overdueItems:23, totalLoans:156, newItemsMonth:124 };
 
 // ═══════════════════════════════════════════════════════════
-//  SHARED UI COMPONENTS (Updated for Theming)
+//  SHARED UI COMPONENTS
 // ═══════════════════════════════════════════════════════════
 const C = { 
   primary: "var(--primary)", 
