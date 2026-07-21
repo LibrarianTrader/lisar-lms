@@ -68,21 +68,7 @@ const STATS = { totalItems:12847, totalBibs:8432, activePatrons:3241, todayCheck
 // ═══════════════════════════════════════════════════════════
 //  SHARED UI COMPONENTS
 // ═══════════════════════════════════════════════════════════
-const C = { 
-  primary: "var(--primary)", 
-  bg: "var(--bg)", 
-  card: "var(--card)", 
-  border: "var(--border)", 
-  text: "var(--text)", 
-  muted: "var(--muted)", 
-  success: "var(--success)", 
-  warning: "var(--warning)", 
-  danger: "var(--danger)", 
-  info: "var(--info)", 
-  sidebar: "var(--sidebar)", 
-  sidebarHover: "var(--sidebarHover)", 
-  sidebarActive: "var(--sidebarActive)" 
-};
+const C = { primary:"#2563EB", bg:"#F8FAFC", card:"#FFFFFF", border:"#E2E8F0", text:"#1E293B", muted:"#64748B", success:"#16A34A", warning:"#D97706", danger:"#DC2626", info:"#0891B2", sidebar:"#0F172A", sidebarHover:"rgba(255,255,255,.06)", sidebarActive:"rgba(37,99,235,.25)" };
 
 function Badge({ color="blue", children }) {
   const map = { blue:{bg:"#DBEAFE",text:"#1E40AF"}, green:{bg:"#DCFCE7",text:"#15803D"}, red:{bg:"#FEE2E2",text:"#B91C1C"}, yellow:{bg:"#FEF9C3",text:"#A16207"}, purple:{bg:"#F3E8FF",text:"#7E22CE"}, gray:{bg:"#F1F5F9",text:"#475569"} };
@@ -687,10 +673,9 @@ function Sidebar({ page, setPage, library, collapsed, setCollapsed }) {
   );
 }
 
-function Header({ page, user, library, setPage, onLogout, goBack, canGoBack, theme, setTheme }) {
+function Header({ page, user, library, setPage, onLogout, goBack, canGoBack }) {
   const [search, setSearch] = useState("");
   const title = NAV.find(n=>n.id===page)?.label || "Dashboard";
-  
   return (
     <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:"0 16px",height:64,display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:50}}>
       {canGoBack && (
@@ -713,10 +698,6 @@ function Header({ page, user, library, setPage, onLogout, goBack, canGoBack, the
         <span style={{fontWeight:600,fontSize:".9em",color:C.text}}>{title}</span>
       </div>
       <div style={{flex:1,display:"flex",justifyContent:"flex-end",alignItems:"center",gap:12}}>
-        {/* NEW THEME TOGGLE BUTTON */}
-        <button onClick={() => setTheme(theme === "light" ? "dark" : "light")} title="Toggle Theme" style={{background:"none",border:"none",fontSize:18,cursor:"pointer"}}>
-          {theme === "light" ? "🌙" : "☀️"}
-        </button>
         <button style={{background:"none",border:"none",fontSize:18,cursor:"pointer"}}>🔔</button>
         <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={onLogout}>
           <div style={{width:32,height:32,borderRadius:"50%",background:C.primary,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:".72em",fontWeight:700}}>{user.avatar}</div>
@@ -4510,15 +4491,6 @@ export default function LISARApp() {
   const [library,     setLibrary]     = useState(null);
   const [patron,      setPatron]      = useState(null);
   const [patronLib,   setPatronLib]   = useState(null);
-  
-  // NEW: Theme State Management
-  const [theme, setTheme] = useState(localStorage.getItem("lisar_theme") || "light");
-
-  // NEW: Apply theme to document and save to local storage
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("lisar_theme", theme);
-  }, [theme]);
 
   // Navigate with history tracking
   const navigate = (newPage) => {
