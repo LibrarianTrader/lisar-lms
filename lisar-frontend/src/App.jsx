@@ -465,9 +465,9 @@ function LandingPage({ onLogin }) {
           <span style={{fontWeight:800,fontSize:"1.15em",color:C.text,letterSpacing:"-.02em"}}>LISAR <span style={{color:C.primary}}>LMS</span></span>
         </div>
         <div style={{display:"flex",gap:12}}>
-          <Btn variant="secondary" onClick={()=>onLogin("patron")}>📚 Patron Portal</Btn>
-          <Btn variant="secondary" onClick={onLogin}>Staff Sign In</Btn>
-          <Btn onClick={onLogin} icon="✨">Start Free</Btn>
+          <Btn variant="secondary" onClick={()=>onLogin("patron")} color="#0F172A">📚 Patron Portal</Btn>
+          <Btn variant="secondary" onClick={onLogin} color="#0F172A">Staff Sign In</Btn>
+          <Btn onClick={onLogin} icon="✨" color="#FFFFFF">Start Free</Btn>
         </div>
       </nav>
       {/* Hero */}
@@ -502,7 +502,7 @@ function LandingPage({ onLogin }) {
           <div style={{fontWeight:700,color:C.text,marginBottom:4}}>Seamlessly migrate from your current system</div>
           <div style={{fontSize:".84em",color:C.muted}}>Koha · Librarika · Millennium · Alexandria · MARC .mrc files · Excel spreadsheets — we import them all. Your data moves in minutes, not months.</div>
         </div>
-        <Btn onClick={onLogin}>Learn about Migration →</Btn>
+        <Btn onClick={onLogin} color="#FFFFFF">Learn about Migration →</Btn>
       </div>
       {/* Pricing */}
       <div style={{padding:"60px 40px",maxWidth:1100,margin:"0 auto"}}>
