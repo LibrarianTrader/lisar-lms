@@ -471,7 +471,7 @@ function LandingPage({ onLogin }) {
         </div>
       </nav>
       {/* Hero */}
-      <div style={{background:`linear-gradient(rgba(15,23,42,.95),rgba(15,23,42,.95)),url('https://i.postimg.cc/bJRQmXhL/Gemini-Generated-Image-xevrk2xevrk2xevr.png') center/cover no-repeat`,color:"#fff",padding:"80px 40px",textAlign:"center"}}>
+      <div style={{background:`linear-gradient(rgba(15,23,42,.88),rgba(15,23,42,.88)),url('https://i.postimg.cc/bJRQmXhL/Gemini-Generated-Image-xevrk2xevrk2xevr.png') center/cover no-repeat`,color:"#fff",padding:"80px 40px",textAlign:"center"}}>
         <div style={{display:"inline-block",background:"rgba(37,99,235,.3)",border:"1px solid rgba(37,99,235,.5)",borderRadius:20,padding:"4px 14px",fontSize:".78em",fontWeight:600,color:"#93C5FD",marginBottom:18}}>✨ AI-Powered Library Management</div>
         <h1 style={{fontSize:"3em",fontWeight:800,margin:"0 0 16px",lineHeight:1.1,letterSpacing:"-.02em"}}>The Modern Library<br/><span style={{color:"#60A5FA"}}>Management System</span></h1>
         <p style={{fontSize:"1.1em",color:"#94A3B8",maxWidth:560,margin:"0 auto 32px",lineHeight:1.7}}>LISAR LMS brings AI-assisted cataloguing, circulation, patron management and OPAC into one beautiful platform any library can adopt in minutes.</p>
