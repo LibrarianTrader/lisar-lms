@@ -545,6 +545,7 @@ function LoginPage({ onLogin, goLanding }) {
   const [libType, setLibType] = useState("academic");
   const [loading, setLoading] = useState(false);
   const [errMsg,  setErrMsg]  = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const handleLogin = async () => {
     if(!email||!pass){setErrMsg("Email and password required");return;}
