@@ -3653,7 +3653,21 @@ function SettingsPage() {
   });
   const [selectedTemplate, setSelectedTemplate] = useState("overdue");
 
-  const save = (label) => { setSavedMsg(`✅ ${label} saved`); setTimeout(()=>setSavedMsg(""),3000); };
+  const [saving, setSaving] = useState(false);
+
+const save = async (label, apiCall) => {
+  if (!apiCall) { setSavedMsg(`✅ ${label} saved`); setTimeout(()=>setSavedMsg(""),3000); return; }
+  setSaving(true);
+  try {
+    await apiCall();
+    setSavedMsg(`✅ ${label} saved`);
+  } catch (e) {
+    setSavedMsg(`❌ ${e.message||"Save failed"}`);
+  } finally {
+    setSaving(false);
+    setTimeout(()=>setSavedMsg(""),3000);
+  }
+};
 
   const saveRule = () => {
     if (!editingRule||!ruleVal) return;
