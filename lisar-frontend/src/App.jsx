@@ -3649,14 +3649,13 @@ useEffect(()=>{
   const [ruleVal, setRuleVal]         = useState("");
   const [libProfile, setLibProfile]   = useState({...DEMO.library});
 useEffect(()=>{ api.settings.getLibrary().then(d=>{if(d?.library)setLibProfile(p=>({...p,...d.library}));}).catch(()=>{}); },[]);
-  const [staff, setStaff]             = useState([
-    {id:1,name:"Adewale Okonkwo",email:"a.okonkwo@unilag.edu.ng",role:"Head Librarian",access:"admin",lastLogin:"2025-06-26",status:"active"},
-    {id:2,name:"Dr. Taiwo Oladele",email:"t.oladele@unilag.edu.ng",role:"Staff Librarian",access:"librarian",lastLogin:"2025-06-25",status:"active"},
-    {id:3,name:"Ms. Amina Suleiman",email:"a.suleiman@unilag.edu.ng",role:"Circulation Librarian",access:"circulation",lastLogin:"2025-06-26",status:"active"},
-    {id:4,name:"Mr. Tunde Bakare",email:"t.bakare@unilag.edu.ng",role:"Cataloguer",access:"catalogue",lastLogin:"2025-06-24",status:"active"},
-  ]);
+ const [staff, setStaff]             = useState([]);
   const [showStaffModal, setShowStaffModal] = useState(false);
-  const [newStaff, setNewStaff]             = useState({name:"",email:"",role:"",access:"librarian"});
+  const [newStaff, setNewStaff]             = useState({name:"",email:"",password:"",role:"",access:"librarian"});
+  const [editingStaff, setEditingStaff]     = useState(null);
+  const [staffMsg, setStaffMsg]             = useState("");
+  
+useEffect(()=>{ api.settings.staff().then(d=>{if(d?.staff)setStaff(d.staff);}).catch(()=>{}); },[]);
   const [branches, setBranches]             = useState([
     {id:1,name:"Main Library",location:"Akoka Campus",items:10247,active:true,head:"Adewale Okonkwo"},
     {id:2,name:"Medical Branch",location:"College of Medicine",items:2600,active:true,head:"Dr. Adaeze Nwosu"},
@@ -3704,11 +3703,15 @@ const save = async (label, apiCall) => {
   setEditingRule(null); setRuleVal("");
 };
 
-  const addStaff = () => {
-    if (!newStaff.name||!newStaff.email) return;
-    setStaff(prev=>[...prev,{...newStaff,id:prev.length+1,lastLogin:"Never",status:"active"}]);
-    setNewStaff({name:"",email:"",role:"",access:"librarian"});
-    setShowStaffModal(false); save("Staff account");
+  const addStaff = async () => {
+    if (!newStaff.name||!newStaff.email||!newStaff.password) return;
+    try {
+      await api.settings.createStaff({name:newStaff.name,email:newStaff.email,password:newStaff.password,role:newStaff.access});
+      const d = await api.settings.staff();
+      if(d?.staff) setStaff(d.staff);
+      setNewStaff({name:"",email:"",password:"",role:"",access:"librarian"});
+      setShowStaffModal(false); save("Staff account");
+    } catch(e){ setStaffMsg(`❌ ${e.message||"Failed to add staff"}`); setTimeout(()=>setStaffMsg(""),3000); }
   };
 
   const tabs = [
@@ -3771,8 +3774,12 @@ const save = async (label, apiCall) => {
                 <span style={{fontSize:".78em",color:C.muted}}>{s.lastLogin}</span>,
                 s.status==="active"?<Badge color="green">Active</Badge>:<Badge color="gray">Inactive</Badge>,
                 <div style={{display:"flex",gap:4}}>
-                  <Btn size="sm" variant="secondary">Edit</Btn>
-                  <Btn size="sm" variant="ghost" onClick={()=>setStaff(prev=>prev.map(x=>x.id===s.id?{...x,status:x.status==="active"?"inactive":"active"}:x))}>{s.status==="active"?"Deactivate":"Activate"}</Btn>
+                  <Btn size="sm" variant="secondary" onClick={()=>setEditingStaff({...s})}>Edit</Btn>
+                  <Btn size="sm" variant="ghost" onClick={async()=>{
+                    const newStatus = s.status==="active"?"inactive":"active";
+                    try{ await api.settings.updateStaff(s.id,{name:s.name,role:s.role,active:newStatus==="active"?1:0}); setStaff(prev=>prev.map(x=>x.id===s.id?{...x,status:newStatus}:x)); }
+                    catch(e){ setStaffMsg(`❌ ${e.message||"Update failed"}`); setTimeout(()=>setStaffMsg(""),3000); }
+                  }}>{s.status==="active"?"Deactivate":"Activate"}</Btn>
                 </div>
               ]}))}/>
           </Card>
@@ -3796,7 +3803,8 @@ const save = async (label, apiCall) => {
           {showStaffModal&&(
             <Modal title="Add Staff Account" onClose={()=>setShowStaffModal(false)} width={460}>
               <Input label="Full Name" value={newStaff.name} onChange={v=>setNewStaff(s=>({...s,name:v}))} placeholder="Firstname Surname" required/>
-              <Input label="Email" value={newStaff.email} onChange={v=>setNewStaff(s=>({...s,email:v}))} placeholder="email@institution.edu" required/>
+             <Input label="Email" value={newStaff.email} onChange={v=>setNewStaff(s=>({...s,email:v}))} placeholder="email@institution.edu" required/>
+              <Input label="Password" type="password" value={newStaff.password} onChange={v=>setNewStaff(s=>({...s,password:v}))} placeholder="Temporary password" required/>
               <Input label="Role / Title" value={newStaff.role} onChange={v=>setNewStaff(s=>({...s,role:v}))} placeholder="e.g. Circulation Librarian"/>
               <Select label="Access Level" value={newStaff.access} onChange={v=>setNewStaff(s=>({...s,access:v}))} options={[{value:"admin",label:"Admin — full access"},{value:"librarian",label:"Librarian — catalogue & patrons"},{value:"circulation",label:"Circulation — loans & returns"},{value:"catalogue",label:"Catalogue — items only"}]}/>
               <div style={{display:"flex",gap:8,marginTop:8}}>
@@ -3805,6 +3813,21 @@ const save = async (label, apiCall) => {
               </div>
             </Modal>
           )}
+         {editingStaff&&(
+            <Modal title="Edit Staff Account" onClose={()=>setEditingStaff(null)} width={460}>
+              <Input label="Full Name" value={editingStaff.name} onChange={v=>setEditingStaff(s=>({...s,name:v}))}/>
+              <Input label="Role / Title" value={editingStaff.role} onChange={v=>setEditingStaff(s=>({...s,role:v}))}/>
+              <Select label="Access Level" value={editingStaff.access} onChange={v=>setEditingStaff(s=>({...s,access:v}))} options={[{value:"admin",label:"Admin"},{value:"librarian",label:"Librarian"},{value:"circulation",label:"Circulation"},{value:"catalogue",label:"Catalogue"}]}/>
+              {staffMsg&&<div style={{padding:"8px 12px",borderRadius:7,background:"#FEE2E2",color:"#B91C1C",fontSize:".82em",marginBottom:10}}>{staffMsg}</div>}
+              <div style={{display:"flex",gap:8,marginTop:8}}>
+                <Btn onClick={async()=>{
+                  try{ await api.settings.updateStaff(editingStaff.id,{name:editingStaff.name,role:editingStaff.access,active:1}); const d=await api.settings.staff(); if(d?.staff)setStaff(d.staff); setEditingStaff(null); save("Staff account"); }
+                  catch(e){ setStaffMsg(`❌ ${e.message||"Save failed"}`); }
+                }}>Save Changes</Btn>
+                <Btn variant="secondary" onClick={()=>setEditingStaff(null)}>Cancel</Btn>
+              </div>
+            </Modal>
+          )} 
         </div>
       )}
 
