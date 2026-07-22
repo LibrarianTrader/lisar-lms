@@ -3631,9 +3631,24 @@ function SettingsPage() {
   const [activeTab, setActiveTab] = useState("library");
   const [savedMsg, setSavedMsg]   = useState("");
   const [loanRules, setLoanRules] = useState({undergrad:14,postgrad:21,faculty:30,staff:30,public:7,maxRenewals:2,finePerDay:50,maxFine:2500,suspendThreshold:1000,holdsPerPatron:3,gracePeriod:0});
+useEffect(()=>{
+  api.settings.loanRules().then(d=>{
+    if(!d?.rules?.length) return;
+    const map = {undergraduate:"undergrad",postgraduate:"postgrad",faculty:"faculty",staff:"staff",public:"public"};
+    setLoanRules(r=>{
+      const next={...r};
+      d.rules.forEach(row=>{
+        const key=map[row.patron_type]; if(!key)return;
+        next[key]=row.loan_days; next.maxRenewals=row.max_renewals; next.finePerDay=row.fine_per_day; next.maxFine=row.max_fine;
+      });
+      return next;
+    });
+  }).catch(()=>{});
+},[]);
   const [editingRule, setEditingRule] = useState(null);
   const [ruleVal, setRuleVal]         = useState("");
   const [libProfile, setLibProfile]   = useState({...DEMO.library});
+useEffect(()=>{ api.settings.getLibrary().then(d=>{if(d?.library)setLibProfile(p=>({...p,...d.library}));}).catch(()=>{}); },[]);
   const [staff, setStaff]             = useState([
     {id:1,name:"Adewale Okonkwo",email:"a.okonkwo@unilag.edu.ng",role:"Head Librarian",access:"admin",lastLogin:"2025-06-26",status:"active"},
     {id:2,name:"Dr. Taiwo Oladele",email:"t.oladele@unilag.edu.ng",role:"Staff Librarian",access:"librarian",lastLogin:"2025-06-25",status:"active"},
@@ -3669,11 +3684,25 @@ const save = async (label, apiCall) => {
   }
 };
 
-  const saveRule = () => {
-    if (!editingRule||!ruleVal) return;
-    setLoanRules(r=>({...r,[editingRule]:parseInt(ruleVal)||parseFloat(ruleVal)||ruleVal}));
-    setEditingRule(null); setRuleVal(""); save("Loan rule");
-  };
+  const saveRule = async () => {
+  if (!editingRule||!ruleVal) return;
+  const val = parseInt(ruleVal)||parseFloat(ruleVal)||ruleVal;
+  const updated = {...loanRules,[editingRule]:val};
+  setLoanRules(updated);
+  const perTypeKey = {undergrad:"undergraduate",postgrad:"postgraduate",faculty:"faculty",staff:"staff",public:"public"}[editingRule];
+  try{
+    if(perTypeKey){
+      await api.settings.updateLoanRules({patron_type:perTypeKey,loan_days:updated[editingRule],max_renewals:updated.maxRenewals,fine_per_day:updated.finePerDay,max_fine:updated.maxFine});
+    } else if(["maxRenewals","finePerDay","maxFine"].includes(editingRule)){
+      // applies across all patron types — push to each
+      for(const pt of ["undergraduate","postgraduate","faculty","staff","public"]){
+        await api.settings.updateLoanRules({patron_type:pt,loan_days:updated[{undergraduate:"undergrad",postgraduate:"postgrad",faculty:"faculty",staff:"staff",public:"public"}[pt]],max_renewals:updated.maxRenewals,fine_per_day:updated.finePerDay,max_fine:updated.maxFine});
+      }
+    }
+    save("Loan rule");
+  }catch(e){ setSavedMsg(`❌ ${e.message||"Save failed"}`); setTimeout(()=>setSavedMsg(""),3000); }
+  setEditingRule(null); setRuleVal("");
+};
 
   const addStaff = () => {
     if (!newStaff.name||!newStaff.email) return;
