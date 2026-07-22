@@ -4483,29 +4483,53 @@ function SupportTab() {
   );
 }
 export default function LISARApp() {
-  const [screen,      setScreen]      = useState("landing");
-  const [page,        setPage]        = useState("dashboard");
-  const [pageHistory, setPageHistory] = useState([]);
-  const [collapsed,   setCollapsed]   = useState(false);
-  const [user,        setUser]        = useState(null);
-  const [library,     setLibrary]     = useState(null);
-  const [patron,      setPatron]      = useState(null);
-  const [patronLib,   setPatronLib]   = useState(null);
+ const [screen,      setScreen]      = useState("landing");
+const [page,        setPage]        = useState("dashboard");
+const [pageHistory, setPageHistory] = useState([]);
+const [collapsed,   setCollapsed]   = useState(false);
+const [user,        setUser]        = useState(null);
+const [library,     setLibrary]     = useState(null);
+const [patron,      setPatron]      = useState(null);
+const [patronLib,   setPatronLib]   = useState(null);
 
-  // Navigate with history tracking
-  const navigate = (newPage) => {
-    setPageHistory(h => [...h, page]);
-    setPage(newPage);
+// Push a real browser history entry every time our app "state" changes
+const pushHistory = (state) => {
+  window.history.pushState(state, "", window.location.pathname);
+};
+
+// Navigate with history tracking (in-app arrow) + real browser history
+const navigate = (newPage) => {
+  setPageHistory(h => [...h, page]);
+  setPage(newPage);
+  pushHistory({ screen, page: newPage });
+};
+const goBack = () => {
+  setPageHistory(h => {
+    if (h.length === 0) return h;
+    const prev = h[h.length - 1];
+    setPage(prev);
+    pushHistory({ screen, page: prev });
+    return h.slice(0, -1);
+  });
+};
+const canGoBack = pageHistory.length > 0;
+
+// Listen for the browser's own Back/Forward buttons
+useEffect(() => {
+  const onPopState = (e) => {
+    if (e.state && e.state.screen) {
+      setScreen(e.state.screen);
+      if (e.state.page) setPage(e.state.page);
+    } else {
+      // No state recorded (very first load) — treat as landing, not logout
+      setScreen("landing");
+    }
   };
-  const goBack = () => {
-    setPageHistory(h => {
-      if (h.length === 0) return h;
-      const prev = h[h.length - 1];
-      setPage(prev);
-      return h.slice(0, -1);
-    });
-  };
-  const canGoBack = pageHistory.length > 0;
+  window.addEventListener("popstate", onPopState);
+  // Seed the very first history entry so there's something to land on
+  window.history.replaceState({ screen: "landing", page: "dashboard" }, "", window.location.pathname);
+  return () => window.removeEventListener("popstate", onPopState);
+}, []);
 
   // Patron session restore
   useEffect(()=>{
@@ -4540,17 +4564,19 @@ export default function LISARApp() {
   },[]);
 
   const login = (data) => {
-    if(data==="patron"){ setScreen("patron_auth"); return; }
-    if(data&&data.user){setUser(data.user);setLibrary(data.library);}
-    setScreen("app"); setPage("dashboard");
-  };
+  if(data==="patron"){ setScreen("patron_auth"); pushHistory({screen:"patron_auth"}); return; }
+  if(data&&data.user){setUser(data.user);setLibrary(data.library);}
+  setScreen("app"); setPage("dashboard");
+  pushHistory({screen:"app", page:"dashboard"});
+};
   const logout = () => {
-    api.logout();
-    localStorage.removeItem("lisar_token");
-    sessionStorage.removeItem("lisar_token");
-    setUser(null); setLibrary(null);
-    setScreen("login"); // go to login, not landing — so user can sign in with different account
-  };
+  api.logout();
+  localStorage.removeItem("lisar_token");
+  sessionStorage.removeItem("lisar_token");
+  setUser(null); setLibrary(null);
+  setScreen("login");
+  pushHistory({screen:"login"});
+};
   const activeUser    = user    || DEMO.user;
   const activeLibrary = library || DEMO.library;
 
@@ -4560,7 +4586,7 @@ export default function LISARApp() {
 
   if (screen==="patron_auth") return (
     <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>{GLOBAL_STYLE}
-      <PatronAuthPage onPatronLogin={handlePatronLogin} goLanding={()=>setScreen("landing")}/>
+      <PatronAuthPage onPatronLogin={handlePatronLogin} goLanding={()=>{setScreen("landing"); pushHistory({screen:"landing"});}}/>
     </div>
   );
 
@@ -4572,19 +4598,19 @@ export default function LISARApp() {
 
   if (screen==="login") return (
     <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>{GLOBAL_STYLE}
-      <LoginPage onLogin={login} goLanding={()=>setScreen("landing")}/>
+      <LoginPage onLogin={login} goLanding={()=>{setScreen("landing"); pushHistory({screen:"landing"});}}/>
     </div>
   );
 
   const renderPage = () => {
-    if (page==="dashboard")   return <DashboardPage setPage={setPage}/>;
+    if (page==="dashboard")   return <DashboardPage setPage={navigate}/>;
     if (page==="opac")        return <OPACPage/>;
     if (page==="catalogue")   return <CataloguingPage/>;
     if (page==="items")       return <ItemsPage/>;
     if (page==="patrons")     return <PatronsPage/>;
     if (page==="circulation") return <CirculationPage/>;
     if (page==="acquisitions")return <AcquisitionsPage/>;
-    if (page==="journals")    return <JournalFinderPage setPage={setPage}/>;  
+    if (page==="journals")    return <JournalFinderPage setPage={navigate}/>;  
     if (page==="reports")     return <ReportsPage/>;
     if (page==="settings")    return <SettingsPage/>;
     if (page==="serials")     return <SerialsPage/>;
