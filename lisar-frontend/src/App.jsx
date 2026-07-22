@@ -195,6 +195,7 @@ function PatronAuthPage({ onPatronLogin, goLanding }) {
   const [pass,    setPass]    = useState("");
   const [loading, setLoading] = useState(false);
   const [errMsg,  setErrMsg]  = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const handleLogin = async () => {
     if(!email||!pass){setErrMsg("Email and password required");return;}
@@ -561,8 +562,8 @@ function LoginPage({ onLogin, goLanding }) {
       const res = await fetch(endpoint+"/auth/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(regData)});
       const d = await res.json();
       if(!res.ok) throw new Error(d.error||"Registration failed");
-      if(d.token){localStorage.setItem("lisar_token",d.token);}
-      onLogin(d);
+      setSuccessMsg(d.message||"Registered! Check your email to verify your account.");
+      setTab("login"); setName(""); setLib(""); setPass("");
     }
     catch(e){setErrMsg(e.message||"Registration failed");}
     finally{setLoading(false);}
@@ -586,6 +587,7 @@ function LoginPage({ onLogin, goLanding }) {
           <div style={{padding:"24px 20px"}}>
             {tab==="login" ? (
               <>
+                {successMsg&&<div style={{background:"#DCFCE7",border:"1px solid rgba(22,163,74,.3)",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:".8em",color:"#15803D"}}>{successMsg}</div>}
                 <div style={{background:`${C.primary}0D`,border:`1px solid ${C.primary}25`,borderRadius:8,padding:"10px 14px",marginBottom:18,fontSize:".78em",color:C.primary}}>
                   <strong>Demo credentials</strong><br/>Email: demo@lisar.app &nbsp;·&nbsp; Password: demo123
                 </div>
@@ -4550,6 +4552,7 @@ function SupportTab() {
 }
 export default function LISARApp() {
  const [screen,      setScreen]      = useState("landing");
+  const [verifyMsg, setVerifyMsg] = useState("");
 const [page,        setPage]        = useState("dashboard");
 const [pageHistory, setPageHistory] = useState([]);
 const [collapsed,   setCollapsed]   = useState(false);
@@ -4596,6 +4599,18 @@ useEffect(() => {
   window.history.replaceState({ screen: "landing", page: "dashboard" }, "", window.location.pathname);
   return () => window.removeEventListener("popstate", onPopState);
 }, []);
+
+useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("verify");
+    if(!token) return;
+    const endpoint = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+    fetch(`${endpoint}/auth/verify-email?token=${token}`)
+      .then(r=>r.json())
+      .then(d=>{ setVerifyMsg(d.message||d.error||""); setScreen("login"); })
+      .catch(()=>setVerifyMsg("Verification failed. Try registering again."))
+      .finally(()=>{ window.history.replaceState({}, "", window.location.pathname); });
+  },[]);  
 
   // Patron session restore
   useEffect(()=>{
