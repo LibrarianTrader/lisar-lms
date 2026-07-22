@@ -3721,7 +3721,7 @@ const save = async (label, apiCall) => {
             <div style={{paddingRight:8}}><Input label="Website" value="" onChange={()=>{}} placeholder="https://library.institution.edu"/></div>
             <div style={{paddingLeft:8}}><Input label="ISIL Code" value="" onChange={()=>{}} placeholder="e.g. NG-LO-UNI"/></div>
           </div>
-          <div style={{marginTop:8}}><Btn onClick={()=>save("Library profile")}>Save Changes</Btn></div>
+          <div style={{marginTop:8}}><Btn onClick={()=>save("Library profile", ()=>api.settings.updateLibrary(libProfile))} disabled={saving}>{saving?"Saving…":"Save Changes"}</Btn></div>
         </Card>
       )}
 
