@@ -4625,7 +4625,7 @@ useEffect(() => {
 
   const GLOBAL_STYLE = <style>{`*{box-sizing:border-box;margin:0;padding:0;} @keyframes spin{to{transform:rotate(360deg)}} body{font-family:Inter,system-ui,sans-serif;}${MOBILE_CSS}`}</style>;
 
-  if (screen==="landing") return <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>{GLOBAL_STYLE}<LandingPage onLogin={login}/></div>;
+  if (screen==="landing") return <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>{GLOBAL_STYLE}<LandingPage onLogin={(arg)=>{ if(arg==="patron"){setScreen("patron_auth");return;} setScreen("login"); }}/></div>;
 
   if (screen==="patron_auth") return (
     <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>{GLOBAL_STYLE}
