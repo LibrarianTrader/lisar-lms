@@ -4679,6 +4679,7 @@ useEffect(()=>{
 
   if (screen==="login") return (
     <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>{GLOBAL_STYLE}
+      {verifyMsg&&<div style={{padding:"12px 20px",background:"#DCFCE7",color:"#15803D",textAlign:"center",fontSize:".85em"}}>{verifyMsg}</div>}
       <LoginPage onLogin={login} goLanding={()=>{setScreen("landing"); pushHistory({screen:"landing"});}}/>
     </div>
   );
