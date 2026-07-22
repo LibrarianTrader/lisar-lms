@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT    NOT NULL,
   role          TEXT    NOT NULL DEFAULT 'librarian',
   active        INTEGER NOT NULL DEFAULT 1,
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  verify_token   TEXT,
   last_login    TEXT,
   created_at    TEXT    DEFAULT (datetime('now')),
   UNIQUE(email, library_id)
