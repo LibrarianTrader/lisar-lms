@@ -4,11 +4,15 @@ const bcrypt  = require("bcryptjs");
 const jwt     = require("jsonwebtoken");
 const db      = require("../db");
 
+const ALLOWED_EMAILS = ["joshuabaoku@gmail.com", "okunolaglorious@gmail.com"];
+
 router.post("/register", (req, res) => {
   try {
     const { name, libraryName, email, password, libraryType } = req.body;
     if (!name||!libraryName||!email||!password)
       return res.status(400).json({ error: "All fields required" });
+    if (!ALLOWED_EMAILS.includes((email||"").trim().toLowerCase()))
+      return res.status(403).json({ error: "Registration is invite-only. Contact the administrator." });
     const slug = libraryName.toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")+"-"+Date.now();
     const lib  = db.prepare("INSERT INTO libraries (name,slug,type,email) VALUES (?,?,?,?)").run(libraryName,slug,libraryType||"academic",email);
     const hash = bcrypt.hashSync(password, 10);
