@@ -8,8 +8,16 @@ const authenticate = (req, res, next) => {
   if (!token) return res.status(401).json({ error: "No token provided" });
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Creator/superadmin tokens bypass the normal users table lookup
+    if (payload.role === "creator") {
+      req.user = { id: 0, name: "Creator", email: payload.email, role: "creator", active: 1 };
+      req.library_id = null;
+      return next();
+    }
+
     const user = db.prepare(
-      "SELECT id, library_id, name, email, role, active FROM users WHERE id = ?"
+      "SELECT id, library_id, name, email, role, active FROM users WHERE id=?"
     ).get(payload.id);
     if (!user || !user.active) return res.status(401).json({ error: "Invalid or inactive account" });
     req.user = user; req.library_id = user.library_id;
