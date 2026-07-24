@@ -9,6 +9,11 @@ const db      = require("../db");
 const resend = new Resend(process.env.RESEND_API_KEY);
 const ALLOWED_EMAILS = ["joshuabaoku@gmail.com", "okunolaglorious@gmail.com"];
 
+// Creator/superadmin — hardcoded allowlist, not tied to any library
+const CREATOR_EMAILS = ["baokujoshua@gmail.com", "okunolaglorious@gmail.com", "vaughansurprise@gmail.com"];
+// bcrypt hash of your chosen password — generate with: bcrypt.hashSync("yourPasswordHere", 10)
+const CREATOR_PASSWORD_HASH = "$2a$10$REPLACE_WITH_YOUR_OWN_HASH";
+
 router.post("/register", async (req, res) => {
   try {
     const { name, libraryName, email, password, libraryType } = req.body;
@@ -69,6 +74,19 @@ router.get("/verify-email", (req, res) => {
     if (!user) return res.status(400).json({ error: "Invalid or expired verification link" });
     db.prepare("UPDATE users SET email_verified=1, verify_token=NULL WHERE id=?").run(user.id);
     res.json({ message: "Email verified! You can now log in." });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/creator-login", (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+    if (!CREATOR_EMAILS.includes(email.trim().toLowerCase()))
+      return res.status(403).json({ error: "Not authorized" });
+    if (!bcrypt.compareSync(password, Eebudola@098))
+      return res.status(401).json({ error: "Invalid credentials" });
+    const token = jwt.sign({ email: email.trim().toLowerCase(), role: "creator" }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    res.json({ token, user: { name: "Creator", email, role: "creator" } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
