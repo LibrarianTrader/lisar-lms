@@ -4,6 +4,8 @@ const db       = require("../db");
 const bcrypt   = require("bcryptjs");
 const { authenticate, requireRole } = require("../middleware/auth");
 
+try { db.prepare("ALTER TABLE users ADD COLUMN honorific TEXT DEFAULT ''").run(); } catch(e) {}
+
 // GET library profile
 router.get("/library", authenticate, (req, res) => {
   try {
@@ -26,7 +28,7 @@ router.put("/library", authenticate, requireRole("admin"), (req, res) => {
 // GET all staff
 router.get("/staff", authenticate, requireRole("admin"), (req, res) => {
   try {
-    const staff = db.prepare("SELECT id,name,email,role,active,last_login,created_at FROM users WHERE library_id=? ORDER BY name ASC").all(req.library_id);
+    const staff = db.prepare("SELECT id,name,honorific,email,role,active,last_login,created_at FROM users WHERE library_id=? ORDER BY name ASC").all(req.library_id);
     res.json({ staff });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -34,24 +36,24 @@ router.get("/staff", authenticate, requireRole("admin"), (req, res) => {
 // POST add staff
 router.post("/staff", authenticate, requireRole("admin"), (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
-    if (!name||!email||!password) return res.status(400).json({ error: "Name, email and password required" });
-    const exists = db.prepare("SELECT id FROM users WHERE email=? AND library_id=?").get(email, req.library_id);
-    if (exists) return res.status(400).json({ error: "Email already exists" });
-    const hash   = bcrypt.hashSync(password, 10);
-    const result = db.prepare(
-      "INSERT INTO users (library_id,name,email,password_hash,role) VALUES (?,?,?,?,?)"
-    ).run(req.library_id,name,email,hash,role||"librarian");
-    res.status(201).json({ user: db.prepare("SELECT id,name,email,role,active FROM users WHERE id=?").get(result.lastInsertRowid) });
+    const { name, honorific, email, password, role } = req.body;
+if (!name||!email||!password) return res.status(400).json({ error: "Name, email and password required" });
+const exists = db.prepare("SELECT id FROM users WHERE email=? AND library_id=?").get(email, req.library_id);
+if (exists) return res.status(400).json({ error: "Email already exists" });
+const hash    = bcrypt.hashSync(password, 10);
+const result = db.prepare(
+  "INSERT INTO users (library_id,name,honorific,email,password_hash,role) VALUES (?,?,?,?,?,?)"
+).run(req.library_id,name,honorific||"",email,hash,role||"librarian");
+res.status(201).json({ user: db.prepare("SELECT id,name,honorific,email,role,active FROM users WHERE id=?").get(result.lastInsertRowid) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PUT update staff
 router.put("/staff/:id", authenticate, requireRole("admin"), (req, res) => {
   try {
-    const { name, role, active } = req.body;
-    db.prepare("UPDATE users SET name=?,role=?,active=? WHERE id=? AND library_id=?").run(name,role,active,req.params.id,req.library_id);
-    res.json({ user: db.prepare("SELECT id,name,email,role,active FROM users WHERE id=?").get(req.params.id) });
+    const { name, honorific, role, active } = req.body;
+db.prepare("UPDATE users SET name=?,honorific=?,role=?,active=? WHERE id=? AND library_id=?").run(name,honorific||"",role,active,req.params.id,req.library_id);
+res.json({ user: db.prepare("SELECT id,name,honorific,email,role,active FROM users WHERE id=?").get(req.params.id) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
