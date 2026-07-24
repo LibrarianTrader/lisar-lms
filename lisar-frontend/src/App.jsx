@@ -3808,7 +3808,22 @@ const save = async (label, apiCall) => {
               <Input label="Full Name" value={newStaff.name} onChange={v=>setNewStaff(s=>({...s,name:v}))} placeholder="Firstname Surname" required/>
              <Input label="Email" value={newStaff.email} onChange={v=>setNewStaff(s=>({...s,email:v}))} placeholder="email@institution.edu" required/>
               <Input label="Password" type="password" value={newStaff.password} onChange={v=>setNewStaff(s=>({...s,password:v}))} placeholder="Temporary password" required/>
-              <Input label="Role / Title" value={newStaff.role} onChange={v=>setNewStaff(s=>({...s,role:v}))} placeholder="e.g. Circulation Librarian"/>
+              <Select label="Role / Title" value={newStaff.role} onChange={v=>setNewStaff(s=>({...s,role:v}))} options={[
+  {value:"",label:"Select role…"},
+  {value:"University Librarian",label:"University Librarian"},
+  {value:"Head Librarian",label:"Head Librarian"},
+  {value:"Staff Librarian",label:"Staff Librarian"},
+  {value:"Librarian I",label:"Librarian I"},
+  {value:"Librarian II",label:"Librarian II"},
+  {value:"Higher Library Officer",label:"Higher Library Officer"},
+  {value:"Readers' Services Librarian",label:"Readers' Services Librarian"},
+  {value:"Circulation Librarian",label:"Circulation Librarian"},
+  {value:"Cataloguer",label:"Cataloguer"},
+  {value:"Reference Librarian",label:"Reference Librarian"},
+  {value:"Acquisitions Librarian",label:"Acquisitions Librarian"},
+  {value:"Serials Librarian",label:"Serials Librarian"},
+  {value:"Systems Librarian",label:"Systems Librarian"},
+]}/>
               <Select label="Access Level" value={newStaff.access} onChange={v=>setNewStaff(s=>({...s,access:v}))} options={[{value:"admin",label:"Admin — full access"},{value:"librarian",label:"Librarian — catalogue & patrons"},{value:"circulation",label:"Circulation — loans & returns"},{value:"catalogue",label:"Catalogue — items only"}]}/>
               <div style={{display:"flex",gap:8,marginTop:8}}>
                 <Btn full onClick={addStaff} disabled={!newStaff.name||!newStaff.email}>Create Account</Btn>
@@ -3819,7 +3834,21 @@ const save = async (label, apiCall) => {
          {editingStaff&&(
             <Modal title="Edit Staff Account" onClose={()=>setEditingStaff(null)} width={460}>
               <Input label="Full Name" value={editingStaff.name} onChange={v=>setEditingStaff(s=>({...s,name:v}))}/>
-              <Input label="Role / Title" value={editingStaff.role} onChange={v=>setEditingStaff(s=>({...s,role:v}))}/>
+              <Select label="Role / Title" value={editingStaff.role} onChange={v=>setEditingStaff(s=>({...s,role:v}))} options={[
+  {value:"University Librarian",label:"University Librarian"},
+  {value:"Head Librarian",label:"Head Librarian"},
+  {value:"Staff Librarian",label:"Staff Librarian"},
+  {value:"Librarian I",label:"Librarian I"},
+  {value:"Librarian II",label:"Librarian II"},
+  {value:"Higher Library Officer",label:"Higher Library Officer"},
+  {value:"Readers' Services Librarian",label:"Readers' Services Librarian"},
+  {value:"Circulation Librarian",label:"Circulation Librarian"},
+  {value:"Cataloguer",label:"Cataloguer"},
+  {value:"Reference Librarian",label:"Reference Librarian"},
+  {value:"Acquisitions Librarian",label:"Acquisitions Librarian"},
+  {value:"Serials Librarian",label:"Serials Librarian"},
+  {value:"Systems Librarian",label:"Systems Librarian"},
+]}/>
               <Select label="Access Level" value={editingStaff.access} onChange={v=>setEditingStaff(s=>({...s,access:v}))} options={[{value:"admin",label:"Admin"},{value:"librarian",label:"Librarian"},{value:"circulation",label:"Circulation"},{value:"catalogue",label:"Catalogue"}]}/>
               {staffMsg&&<div style={{padding:"8px 12px",borderRadius:7,background:"#FEE2E2",color:"#B91C1C",fontSize:".82em",marginBottom:10}}>{staffMsg}</div>}
               <div style={{display:"flex",gap:8,marginTop:8}}>
