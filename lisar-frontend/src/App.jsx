@@ -2096,7 +2096,8 @@ function PatronEditForm({ patron, onSave, onClose }) {
 }
 
 function PatronsPage() {
-  const [patrons, setPatrons]   = useState(PATRONS);
+  const [patrons, setPatrons]   = useState([]);
+  const [loading, setLoading]   = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState(null);
   const [cardModal, setCardModal] = useState(null);
@@ -2105,17 +2106,48 @@ function PatronsPage() {
   const [q, setQ] = useState("");
   const [newP, setNewP] = useState({name:"",email:"",phone:"",type:"Undergraduate",dept:"",regDate:new Date().toISOString().split("T")[0],expiry:""});
 
-  const filtered = patrons.filter(p=>q===""||p.name.toLowerCase().includes(q.toLowerCase())||p.barcode.includes(q)||p.email.toLowerCase().includes(q.toLowerCase()));
+  // Fetch real-time patrons from your backend API on mount
+  useEffect(() => {
+    setLoading(true);
+    const endpoint = (import.meta.env.VITE_API_URL || "http://localhost:4000/api");
+    fetch(endpoint + "/patrons", {
+      headers: { "Authorization": `Bearer ${localStorage.getItem("lisar_token")}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setPatrons(data);
+        else if (data?.patrons) setPatrons(data.patrons);
+      })
+      .catch(err => console.error("Failed to fetch live patrons:", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = patrons.filter(p=>q===""||(p.name||"").toLowerCase().includes(q.toLowerCase())||(p.barcode||"").includes(q)||(p.email||"").toLowerCase().includes(q.toLowerCase()));
   const typeBadge = t=>t==="Faculty"?<Badge color="purple">Faculty</Badge>:t==="Postgraduate"?<Badge color="blue">Postgrad</Badge>:t==="Undergraduate"?<Badge color="green">Undergrad</Badge>:t==="Staff"?<Badge color="gray">Staff</Badge>:<Badge color="gray">{t}</Badge>;
   const statusBadge = s=>s==="active"?<Badge color="green">Active</Badge>:s==="suspended"?<Badge color="red">Suspended</Badge>:<Badge color="gray">{s}</Badge>;
 
-  const registerPatron = () => {
+  const registerPatron = async () => {
     if(!newP.name||!newP.email) return;
-    const id = patrons.length+1;
-    const barcode = `PAT${String(id).padStart(4,"0")}`;
-    setPatrons(pp=>[...pp,{id,name:newP.name,barcode,type:newP.type,dept:newP.dept,email:newP.email,phone:newP.phone,regDate:newP.regDate,expiry:newP.expiry||"2026-08-31",loans:0,fines:0,status:"active"}]);
-    setShowModal(false);
-    setNewP({name:"",email:"",phone:"",type:"Undergraduate",dept:"",regDate:new Date().toISOString().split("T")[0],expiry:""});
+    try {
+      const endpoint = (import.meta.env.VITE_API_URL || "http://localhost:4000/api");
+      const res = await fetch(endpoint + "/patrons", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("lisar_token")}` 
+        },
+        body: JSON.stringify(newP)
+      });
+      const d = await res.json();
+      if(!res.ok) throw new Error(d.error || "Failed to register patron");
+      
+      // Refresh patron list with the newly created record from the database
+      setPatrons(pp => [...pp, d.patron || d]);
+      setShowModal(false);
+      setNewP({name:"",email:"",phone:"",type:"Undergraduate",dept:"",regDate:new Date().toISOString().split("T")[0],expiry:""});
+    } catch(e) {
+      alert(e.message);
+    }
   };
 
   const toggleBulk = (id) => setBulkSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
