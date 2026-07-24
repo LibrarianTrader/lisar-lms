@@ -288,6 +288,9 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at  TEXT    DEFAULT (datetime('now'))
 );
 
+try { db.prepare("ALTER TABLE libraries ADD COLUMN website TEXT DEFAULT ''").run(); } catch(e) {}
+try { db.prepare("ALTER TABLE libraries ADD COLUMN isil_code TEXT DEFAULT ''").run(); } catch(e) {}
+
 `);
 
 module.exports = db;
