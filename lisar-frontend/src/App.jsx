@@ -3753,8 +3753,8 @@ const save = async (label, apiCall) => {
             <div style={{gridColumn:"1/-1"}}><Input label="Address" value={libProfile.address} onChange={v=>setLibProfile(p=>({...p,address:v}))}/></div>
             <div style={{paddingRight:8}}><Select label="Library Type" value={libProfile.type.toLowerCase()} onChange={v=>setLibProfile(p=>({...p,type:v}))} options={["Academic","Public","School","Special","National"].map(v=>({value:v.toLowerCase(),label:v}))}/></div>
             <div style={{paddingLeft:8}}><Select label="Country" value="nigeria" onChange={()=>{}} options={[{value:"nigeria",label:"Nigeria"},{value:"ghana",label:"Ghana"},{value:"kenya",label:"Kenya"},{value:"south_africa",label:"South Africa"},{value:"other",label:"Other"}]}/></div>
-            <div style={{paddingRight:8}}><Input label="Website" value="" onChange={()=>{}} placeholder="https://library.institution.edu"/></div>
-            <div style={{paddingLeft:8}}><Input label="ISIL Code" value="" onChange={()=>{}} placeholder="e.g. NG-LO-UNI"/></div>
+            <div style={{paddingRight:8}}><Input label="Website" value={libProfile.website||""} onChange={v=>setLibProfile(p=>({...p,website:v}))} placeholder="https://library.institution.edu"/></div>
+<div style={{paddingLeft:8}}><Input label="ISIL Code" value={libProfile.isil_code||""} onChange={v=>setLibProfile(p=>({...p,isil_code:v}))} placeholder="e.g. NG-LO-UNI"/></div>
           </div>
           <div style={{marginTop:8}}><Btn onClick={()=>save("Library profile", ()=>api.settings.updateLibrary(libProfile))} disabled={saving}>{saving?"Saving…":"Save Changes"}</Btn></div>
         </Card>
