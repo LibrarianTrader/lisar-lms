@@ -36,9 +36,10 @@ router.get("/staff", authenticate, requireRole("admin"), (req, res) => {
 // POST add staff
 router.post("/staff", authenticate, requireRole("admin"), (req, res) => {
   try {
-    const { name, honorific, email, password, role } = req.body;
-if (!name||!email||!password) return res.status(400).json({ error: "Name, email and password required" });
-const exists = db.prepare("SELECT id FROM users WHERE email=? AND library_id=?").get(email, req.library_id);
+   const { name, email, phone, address, type, logo_url, website, isil_code, settings } = req.body;
+db.prepare(
+  `UPDATE libraries SET name=?,email=?,phone=?,address=?,type=?,logo_url=?,website=?,isil_code=?,settings=? WHERE id=?`
+).run(name,email,phone,address,type,logo_url,website||"",isil_code||"",JSON.stringify(settings||{}),req.library_id);
 if (exists) return res.status(400).json({ error: "Email already exists" });
 const hash    = bcrypt.hashSync(password, 10);
 const result = db.prepare(
