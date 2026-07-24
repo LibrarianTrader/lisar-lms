@@ -781,7 +781,7 @@ function downloadFile(content, filename, type) {
 // ═══════════════════════════════════════════════════════════
 //  DASHBOARD
 // ═══════════════════════════════════════════════════════════
-function DashboardPage({ setPage }) {
+function DashboardPage({ setPage, library, user }) {
   const [liveStats, setLiveStats] = useState({...STATS});
   useEffect(()=>{
     api.reports.dashboard().then(d=>{if(!d)return;setLiveStats(s=>({...s,totalItems:d.total_items??s.totalItems,totalBibs:d.total_bibs??s.totalBibs,activePatrons:d.active_patrons??s.activePatrons,todayCheckouts:d.today_checkouts??s.todayCheckouts,todayReturns:d.today_returns??s.todayReturns,overdueItems:d.overdue_count??s.overdueItems,totalLoans:d.active_loans??s.totalLoans,newItemsMonth:d.new_items_month??s.newItemsMonth}));}).catch(()=>{});
@@ -818,8 +818,8 @@ function DashboardPage({ setPage }) {
   return (
     <div style={{padding:"28px 24px",maxWidth:1200}}>
       <PageHeader
-        title={`Welcome back, ${DEMO.user.name.split(" ")[0]} 👋`}
-        subtitle={`${DEMO.library.name} · ${new Date().toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}`}
+  title={`Welcome back, ${(user?.name||DEMO.user.name).split(" ")[0]} 👋`}
+  subtitle={`${library?.name||DEMO.library.name} · ${new Date().toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}`}
         action={<div style={{display:"flex",gap:8}}><Btn onClick={()=>setPage("circulation")} icon="🔄">Circulation Desk</Btn><Btn variant="secondary" onClick={()=>setPage("catalogue")} icon="📚">Add Item</Btn></div>}/>
 
       {/* Live Stats */}
@@ -4686,7 +4686,7 @@ useEffect(()=>{
   );
 
   const renderPage = () => {
-    if (page==="dashboard")   return <DashboardPage setPage={navigate}/>;
+    if (page==="dashboard")   return <DashboardPage setPage={navigate} library={activeLibrary} user={activeUser}/>;
     if (page==="opac")        return <OPACPage/>;
     if (page==="catalogue")   return <CataloguingPage/>;
     if (page==="items")       return <ItemsPage/>;
@@ -4699,7 +4699,7 @@ useEffect(()=>{
     if (page==="serials")     return <SerialsPage/>;
     if (page==="ill")         return <ILLPage/>;
     if (page==="chat")        return <ChatPage/>;
-    return <DashboardPage setPage={setPage}/>;
+    return <DashboardPage setPage={navigate} library={activeLibrary} user={activeUser}/>;
   };
 
   return (
