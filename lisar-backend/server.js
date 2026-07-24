@@ -11,6 +11,7 @@ app.use(helmet());
 app.use(morgan("dev"));
 app.use(cors({ origin: process.env.FRONTEND_URL || "*", credentials: true }));
 app.use(express.json({ limit: "10mb" }));
+app.use("/lostfound", require("./routes/lostfound"));
 
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
