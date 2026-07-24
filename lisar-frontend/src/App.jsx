@@ -68,7 +68,7 @@ const STATS = { totalItems:12847, totalBibs:8432, activePatrons:3241, todayCheck
 // ═══════════════════════════════════════════════════════════
 //  SHARED UI COMPONENTS
 // ═══════════════════════════════════════════════════════════
-const C = { primary:"#2563EB", bg:"#F8FAFC", card:"#FFFFFF", border:"#E2E8F0", text:"#1E293B", muted:"#64748B", success:"#16A34A", warning:"#D97706", danger:"#DC2626", info:"#0891B2", sidebar:"#0F172A", sidebarHover:"rgba(255,255,255,.06)", sidebarActive:"rgba(37,99,235,.25)" };
+const C = { primary:"#2563EB", bg:"#F8FAFC", card:"#0F172A", border:"#E2E8F0", text:"#1E293B", muted:"#64748B", success:"#16A34A", warning:"#D97706", danger:"#DC2626", info:"#0891B2", sidebar:"#0F172A", sidebarHover:"rgba(255,255,255,.06)", sidebarActive:"rgba(37,99,235,.25)" };
 
 function Badge({ color="blue", children }) {
   const map = { blue:{bg:"#DBEAFE",text:"#1E40AF"}, green:{bg:"#DCFCE7",text:"#15803D"}, red:{bg:"#FEE2E2",text:"#B91C1C"}, yellow:{bg:"#FEF9C3",text:"#A16207"}, purple:{bg:"#F3E8FF",text:"#7E22CE"}, gray:{bg:"#F1F5F9",text:"#475569"} };
