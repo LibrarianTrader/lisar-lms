@@ -228,6 +228,20 @@ CREATE TABLE IF NOT EXISTS serial_issues (
   notes        TEXT
 );
 
+CREATE TABLE IF NOT EXISTS lost_found (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  library_id     INTEGER NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
+  description    TEXT    NOT NULL,
+  category       TEXT    NOT NULL DEFAULT 'other',
+  location_found TEXT,
+  date_found     TEXT    NOT NULL DEFAULT (date('now')),
+  status         TEXT    NOT NULL DEFAULT 'unclaimed',
+  claimed_by     TEXT,
+  claimed_date   TEXT,
+  notes          TEXT,
+  created_at     TEXT    DEFAULT (datetime('now'))
+);
+
 -- ── Interlibrary Loan ────────────────────────────────────
 CREATE TABLE IF NOT EXISTS ill_requests (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
