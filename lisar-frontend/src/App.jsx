@@ -3654,7 +3654,7 @@ useEffect(()=>{
 useEffect(()=>{ api.settings.getLibrary().then(d=>{if(d?.library)setLibProfile(p=>({...p,...d.library}));}).catch(()=>{}); },[]);
  const [staff, setStaff]             = useState([]);
   const [showStaffModal, setShowStaffModal] = useState(false);
-  const [newStaff, setNewStaff]             = useState({name:"",email:"",password:"",role:"",access:"librarian"});
+  const [newStaff, setNewStaff]             = useState({honorific:"",name:"",email:"",password:"",role:"",access:"librarian"});
   const [editingStaff, setEditingStaff]     = useState(null);
   const [staffMsg, setStaffMsg]             = useState("");
   
@@ -3709,7 +3709,7 @@ const save = async (label, apiCall) => {
   const addStaff = async () => {
     if (!newStaff.name||!newStaff.email||!newStaff.password) return;
     try {
-      await api.settings.createStaff({name:newStaff.name,email:newStaff.email,password:newStaff.password,role:newStaff.access});
+      await api.settings.createStaff({name:newStaff.name,honorific:newStaff.honorific,email:newStaff.email,password:newStaff.password,role:newStaff.access});
       const d = await api.settings.staff();
       if(d?.staff) setStaff(d.staff);
       setNewStaff({name:"",email:"",password:"",role:"",access:"librarian"});
@@ -3805,7 +3805,15 @@ const save = async (label, apiCall) => {
           </Card>
           {showStaffModal&&(
             <Modal title="Add Staff Account" onClose={()=>setShowStaffModal(false)} width={460}>
-              <Input label="Full Name" value={newStaff.name} onChange={v=>setNewStaff(s=>({...s,name:v}))} placeholder="Firstname Surname" required/>
+              <Select label="Title" value={newStaff.honorific} onChange={v=>setNewStaff(s=>({...s,honorific:v}))} options={[
+  {value:"",label:"Select title…"},
+  {value:"Prof.",label:"Prof."},
+  {value:"Dr.",label:"Dr."},
+  {value:"Mr.",label:"Mr."},
+  {value:"Mrs.",label:"Mrs."},
+  {value:"Miss",label:"Miss"},
+]}/>
+<Input label="Full Name" value={newStaff.name} onChange={v=>setNewStaff(s=>({...s,name:v}))} placeholder="Firstname Surname" required/>
              <Input label="Email" value={newStaff.email} onChange={v=>setNewStaff(s=>({...s,email:v}))} placeholder="email@institution.edu" required/>
               <Input label="Password" type="password" value={newStaff.password} onChange={v=>setNewStaff(s=>({...s,password:v}))} placeholder="Temporary password" required/>
               <Select label="Role / Title" value={newStaff.role} onChange={v=>setNewStaff(s=>({...s,role:v}))} options={[
@@ -3833,7 +3841,15 @@ const save = async (label, apiCall) => {
           )}
          {editingStaff&&(
             <Modal title="Edit Staff Account" onClose={()=>setEditingStaff(null)} width={460}>
-              <Input label="Full Name" value={editingStaff.name} onChange={v=>setEditingStaff(s=>({...s,name:v}))}/>
+              <Select label="Title" value={editingStaff.honorific||""} onChange={v=>setEditingStaff(s=>({...s,honorific:v}))} options={[
+  {value:"",label:"Select title…"},
+  {value:"Prof.",label:"Prof."},
+  {value:"Dr.",label:"Dr."},
+  {value:"Mr.",label:"Mr."},
+  {value:"Mrs.",label:"Mrs."},
+  {value:"Miss",label:"Miss"},
+]}/>
+<Input label="Full Name" value={editingStaff.name} onChange={v=>setEditingStaff(s=>({...s,name:v}))}/>
               <Select label="Role / Title" value={editingStaff.role} onChange={v=>setEditingStaff(s=>({...s,role:v}))} options={[
   {value:"University Librarian",label:"University Librarian"},
   {value:"Head Librarian",label:"Head Librarian"},
@@ -3853,7 +3869,7 @@ const save = async (label, apiCall) => {
               {staffMsg&&<div style={{padding:"8px 12px",borderRadius:7,background:"#FEE2E2",color:"#B91C1C",fontSize:".82em",marginBottom:10}}>{staffMsg}</div>}
               <div style={{display:"flex",gap:8,marginTop:8}}>
                 <Btn onClick={async()=>{
-                  try{ await api.settings.updateStaff(editingStaff.id,{name:editingStaff.name,role:editingStaff.access,active:1}); const d=await api.settings.staff(); if(d?.staff)setStaff(d.staff); setEditingStaff(null); save("Staff account"); }
+                  try{ await api.settings.updateStaff(editingStaff.id,{name:editingStaff.name,honorific:editingStaff.honorific,role:editingStaff.access,active:1}); const d=await api.settings.staff(); if(d?.staff)setStaff(d.staff); setEditingStaff(null); save("Staff account"); }
                   catch(e){ setStaffMsg(`❌ ${e.message||"Save failed"}`); }
                 }}>Save Changes</Btn>
                 <Btn variant="secondary" onClick={()=>setEditingStaff(null)}>Cancel</Btn>
