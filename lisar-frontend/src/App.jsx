@@ -594,7 +594,7 @@ function LoginPage({ onLogin, goLanding }) {
                 </div>
                 <Input label="Email" value={email} onChange={setEmail} placeholder="you@library.edu"/>
                 <Input label="Password" type="password" value={pass} onChange={setPass} placeholder="••••••••"/>
-                {errMsg&&<div style={{background:"#FEE2E2",borderRadius:7,padding:"8px 12px",marginBottom:12,fontSize:".8em",color:"#B91C1C"}}>{errMsg}</div>}
+                {errMsg&&<div style={{background:"#FEE2E2",borderRadius:7,padding:"8px 12px",marginBottom:12,fontSize:".8em",color:"#01721A"}}>{errMsg}</div>}
                 <Btn full onClick={handleLogin} size="lg" disabled={loading}>{loading?"Signing in…":"Sign In →"}</Btn>
                 <div style={{textAlign:"center",marginTop:14,fontSize:".78em",color:C.muted}}>
                   Don't have an account? <button onClick={()=>setTab("register")} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:600}}>Create one free</button>
